@@ -1,0 +1,16 @@
+model FollowUp {
+  id           String           @id @default(cuid())
+  leadId       String
+  assignedToId String
+  scheduledAt  DateTime
+  status       FollowUpStatus   @default(PENDING)
+  outcome      FollowUpOutcome?
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  lead       Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedTo User @relation(fields: [assignedToId], references: [id])
+
+  @@index([assignedToId, status, scheduledAt])
+}

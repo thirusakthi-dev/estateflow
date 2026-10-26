@@ -1,0 +1,14 @@
+model PropertyUnitImage {
+  id        String   @id @default(cuid())
+  unitId    String
+  imageUrl  String
+  publicId  String   @unique
+  alt       String?
+  isCover   Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  unit PropertyUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId, sortOrder])
+}

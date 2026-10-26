@@ -1,0 +1,21 @@
+model PropertyUnit {
+  id         String     @id @default(cuid())
+  buildingId String
+  unitNumber String
+  type       UnitType
+  price      Decimal    @db.Decimal(14, 2)
+  bedrooms   Int?
+  bathrooms  Int?
+  area       Decimal?   @db.Decimal(10, 2)
+  areaUnit   String?    @default("SQ_FT")
+  status     UnitStatus @default(AVAILABLE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  building Building @relation(fields: [buildingId], references: [id])
+
+  images PropertyUnitImage[]
+
+  @@unique([buildingId, unitNumber])
+  @@index([status, type])
+}

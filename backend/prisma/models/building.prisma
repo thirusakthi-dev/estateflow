@@ -1,0 +1,35 @@
+model Building {
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  description  String?
+  totalFloors  Int?
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bookings Booking[]
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  units   PropertyUnit[]
+  images  BuildingImage[]
+
+  @@unique([projectId, name])
+}
+
+model BuildingImage {
+  id         String   @id @default(cuid())
+  buildingId String
+  imageUrl   String
+  publicId   String   @unique
+  alt        String?
+  isCover    Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@index([buildingId, sortOrder])
+}

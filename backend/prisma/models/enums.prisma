@@ -1,0 +1,54 @@
+enum UserRole {
+  ADMIN
+  SALES_EMPLOYEE
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  SITE_VISIT
+  INTERESTED
+  NEGOTIATION
+  BOOKED
+  LOST
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum UnitType {
+  APARTMENT
+  VILLA
+  PLOT
+  SHOP
+  OFFICE
+}
+
+enum UnitStatus {
+  AVAILABLE
+  BOOKED
+  BLOCKED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum FollowUpOutcome {
+  CALL_BACK
+  INTERESTED
+  SITE_VISIT_PLANNED
+  NEGOTIATION
+  NOT_INTERESTED
+  READY_TO_BOOK
+}

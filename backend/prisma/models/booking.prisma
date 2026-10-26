@@ -1,0 +1,16 @@
+model Booking {
+  id          String        @id @default(cuid())
+  leadId      String
+  buildingId  String
+  bookedById  String
+  status      BookingStatus @default(CONFIRMED)
+  bookedAt    DateTime      @default(now())
+  cancelledAt DateTime?
+
+  lead     Lead     @relation(fields: [leadId], references: [id])
+  building Building @relation(fields: [buildingId], references: [id])
+  bookedBy User     @relation(fields: [bookedById], references: [id])
+
+  @@index([leadId])
+  @@index([buildingId, status])
+}
