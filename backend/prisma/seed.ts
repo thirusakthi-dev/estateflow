@@ -4,8 +4,6 @@ import {
   BookingStatus,
   LeadStage,
   ProjectStatus,
-  UnitStatus,
-  UnitType,
   UserRole,
 } from "../src/generated/prisma/client";
 import { prisma } from "../src/lib/prisma";
@@ -19,6 +17,42 @@ function monthsAgo(months: number, day = 12) {
   date.setHours(10, 0, 0, 0);
   return date;
 }
+
+const projectInputs = [
+  {
+    name: "Green Valley Residences",
+    city: "Chennai",
+    address: "OMR, Chennai, Tamil Nadu",
+    description: "Demo project: Green Valley Residences",
+    imageUrl: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c",
+    imagePublicId: "demo-green-valley",
+    imageAlt: "Modern residential property",
+  },
+  {
+    name: "Skyline Heights",
+    city: "Chennai",
+    address: "Porur, Chennai, Tamil Nadu",
+    description: "Demo project: Skyline Heights",
+    imageUrl: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea",
+    imagePublicId: "demo-skyline-heights",
+    imageAlt: "Contemporary residential architecture",
+  },
+  {
+    name: "Palm Grove Villas",
+    city: "Bengaluru",
+    address: "Whitefield, Bengaluru, Karnataka",
+    description: "Demo project: Palm Grove Villas",
+    imageUrl: "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde",
+    imagePublicId: "demo-palm-grove",
+    imageAlt: "Modern villa exterior",
+  },
+];
+
+const buildingInputs = [
+  ["Tower A", "Tower B"],
+  ["North Tower", "South Tower"],
+  ["Villa Block A", "Villa Block B"],
+];
 
 async function main() {
   const password = "Admin@123456";
@@ -58,52 +92,81 @@ async function main() {
     salesUsers.push(user);
   }
 
-  // 3. Projects
-  const projectInputs = [
-    {
-      name: "Green Valley Residences",
-      city: "Chennai",
-      address: "OMR, Chennai, Tamil Nadu",
-    },
-    {
-      name: "Skyline Heights",
-      city: "Chennai",
-      address: "Porur, Chennai, Tamil Nadu",
-    },
-    {
-      name: "Palm Grove Villas",
-      city: "Bengaluru",
-      address: "Whitefield, Bengaluru, Karnataka",
-    },
-  ];
-
+  // 3. Projects and project images
   const projects = [];
 
   for (const input of projectInputs) {
-    const existing = await prisma.project.findFirst({
-      where: { name: input.name, city: input.city },
-    });
-
-    const project =
-      existing ??
-      (await prisma.project.create({
-        data: {
-          ...input,
-          status: ProjectStatus.ACTIVE,
-          description: `Demo project: ${input.name}`,
+    const project = await prisma.project
+      .upsert({
+        where: {
+          // Project has no unique name/city constraint in the supplied schema.
+          // Find existing projects first instead of relying on a nonexistent unique key.
+          id:
+            (
+              await prisma.project.findFirst({
+                where: { name: input.name, city: input.city },
+                select: { id: true },
+              })
+            )?.id ?? "__new_project__",
         },
-      }));
+        update: {
+          address: input.address,
+          description: input.description,
+          status: ProjectStatus.ACTIVE,
+        },
+        create: {
+          name: input.name,
+          city: input.city,
+          address: input.address,
+          description: input.description,
+          status: ProjectStatus.ACTIVE,
+        },
+      })
+      .catch(async (error) => {
+        // A project with this name and city may not exist yet.
+        // Create it when the placeholder ID does not match a real record.
+        if (
+          error instanceof Error &&
+          error.message.includes("Record to update not found")
+        ) {
+          return prisma.project.create({
+            data: {
+              name: input.name,
+              city: input.city,
+              address: input.address,
+              description: input.description,
+              status: ProjectStatus.ACTIVE,
+            },
+          });
+        }
+
+        throw error;
+      });
 
     projects.push(project);
+
+    // Use a stable unique publicId so repeated seed runs update the image.
+    await prisma.projectImage.upsert({
+      where: { publicId: input.imagePublicId },
+      update: {
+        projectId: project.id,
+        imageUrl: input.imageUrl,
+        alt: input.imageAlt,
+        isCover: true,
+        sortOrder: 0,
+      },
+      create: {
+        projectId: project.id,
+        imageUrl: input.imageUrl,
+        publicId: input.imagePublicId,
+        alt: input.imageAlt,
+        isCover: true,
+        sortOrder: 0,
+      },
+    });
   }
 
   // 4. Buildings
-  const buildingInputs = [
-    ["Tower A", "Tower B"],
-    ["North Tower", "South Tower"],
-    ["Villa Block A", "Villa Block B"],
-  ];
-
   const buildings = [];
 
   for (let i = 0; i < projects.length; i++) {
@@ -127,37 +190,7 @@ async function main() {
     }
   }
 
-  // 5. Units
-  for (const building of buildings) {
-    for (let i = 1; i <= 5; i++) {
-      const unitNumber = `D-${String(i).padStart(3, "0")}`;
-
-      await prisma.propertyUnit.upsert({
-        where: {
-          buildingId_unitNumber: {
-            buildingId: building.id,
-            unitNumber,
-          },
-        },
-        update: {},
-        create: {
-          buildingId: building.id,
-          unitNumber,
-          type: building.name.includes("Villa")
-            ? UnitType.VILLA
-            : UnitType.APARTMENT,
-          price: 4500000 + i * 250000,
-          bedrooms: i % 2 === 0 ? 3 : 2,
-          bathrooms: 2,
-          area: 950 + i * 100,
-          areaUnit: "SQ_FT",
-          status: UnitStatus.AVAILABLE,
-        },
-      });
-    }
-  }
-
-  // 6. Remove only the previous demo leads and their bookings.
+  // 5. Remove only previous demo leads and their bookings.
   await prisma.booking.deleteMany({
     where: { lead: { source: DEMO_SOURCE } },
   });
@@ -166,7 +199,7 @@ async function main() {
     where: { source: DEMO_SOURCE },
   });
 
-  // 7. Leads distributed across the last 12 months.
+  // 6. Leads distributed across the last 12 months.
   const stageSequence: LeadStage[] = [
     LeadStage.NEW,
     LeadStage.CONTACTED,
@@ -209,7 +242,7 @@ async function main() {
     leads.push(lead);
   }
 
-  // 8. Bookings with different statuses.
+  // 7. Bookings with different statuses.
   const bookingStatusSequence: BookingStatus[] = [
     BookingStatus.CONFIRMED,
     BookingStatus.PENDING,
@@ -238,8 +271,8 @@ async function main() {
   console.log("Admin: admin@estateflow.local");
   console.log(`Password: ${password}`);
   console.log(`Projects: ${projects.length}`);
+  console.log(`Project images: ${projectInputs.length}`);
   console.log(`Buildings: ${buildings.length}`);
-  console.log(`Units: ${buildings.length * 5}`);
   console.log(`Demo leads: ${leads.length}`);
   console.log("Demo bookings: 20");
 }
