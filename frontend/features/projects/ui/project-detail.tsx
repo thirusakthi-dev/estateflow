@@ -32,19 +32,14 @@ import { DetailStatCard } from "@/components/ui/detail-stat-card";
 import { DetailSection } from "@/components/ui/detail-section";
 
 const statusLabels: Record<ProjectStatus, string> = {
-  PLANNING: "Planning",
-  ONGOING: "Ongoing",
-  COMPLETED: "Completed",
-  ON_HOLD: "On hold",
+  ACTIVE: "Active",
+  INACTIVE: "Inactive",
 };
 
 const statusStyles: Record<ProjectStatus, string> = {
-  PLANNING:
-    "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
-  ONGOING: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
-  COMPLETED:
+  ACTIVE:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-  ON_HOLD: "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300",
+  INACTIVE: "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300",
 };
 
 function formatDate(date?: string | Date | null) {

@@ -38,14 +38,12 @@ const initialForm: ProjectFormValues = {
   description: "",
   address: "",
   city: "",
-  status: "PLANNING",
+  status: "ACTIVE",
 };
 
 const statusOptions = [
-  { label: "Planning", value: "PLANNING" },
-  { label: "Ongoing", value: "ONGOING" },
-  { label: "Completed", value: "COMPLETED" },
-  { label: "On hold", value: "ON_HOLD" },
+  { label: "Active", value: "ACTIVE" },
+  { label: "Inactive", value: "INACTIVE" },
 ];
 
 export function ProjectFormDialog({
