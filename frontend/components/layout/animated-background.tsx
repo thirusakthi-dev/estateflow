@@ -26,6 +26,14 @@ export function AnimatedBackground() {
     )
   `;
 
+  const ambientGlow = useMotionTemplate`
+  radial-gradient(
+    220px circle at ${mouseX}px ${mouseY}px,
+    color-mix(in srgb, var(--primary) 8%, transparent),
+    transparent 100%
+  )
+`;
+
   useEffect(() => {
     if (reduceMotion) return;
 
@@ -76,8 +84,8 @@ export function AnimatedBackground() {
                 linear-gradient(to bottom, color-mix(in srgb, var(--primary) 35%, transparent) 1px, transparent 1px)
               `,
               backgroundSize: "40px 40px",
-              maskImage: spotlight,
-              WebkitMaskImage: spotlight,
+              maskImage: ambientGlow,
+              WebkitMaskImage: ambientGlow,
             }}
           />
 

@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { Building2, CalendarCheck, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  Building2,
+  CalendarCheck,
+  UserRound,
+  FolderKanban,
+  IndianRupee,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -15,6 +21,7 @@ import type { Building } from "@/features/buildings/lib/buildings.types";
 import type { CreateBookingInput } from "../lib/bookings.types";
 
 type CreateBookingDialogProps = {
+  open: boolean;
   initialBuildingId?: string;
   loading?: boolean;
   onCreate: (input: CreateBookingInput) => Promise<unknown>;
@@ -22,14 +29,15 @@ type CreateBookingDialogProps = {
 };
 
 export function CreateBookingDialog({
+  open,
   initialBuildingId,
   loading = false,
   onCreate,
   onCancel,
 }: CreateBookingDialogProps) {
   const [leadId, setLeadId] = useState("");
-  const [buildingId, setBuildingId] = useState(initialBuildingId ?? "");
-  const [submitError, setSubmitError] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [buildingId, setBuildingId] = useState("");
 
   const {
     data: leadsData,
@@ -43,17 +51,45 @@ export function CreateBookingDialog({
     isError: buildingsError,
   } = useBuildings({ page: 1, limit: 100 });
 
-  useEffect(() => {
-    setLeadId("");
-    setBuildingId(initialBuildingId ?? "");
-    setSubmitError("");
-  }, [initialBuildingId]);
-
   const leads: Lead[] = leadsData?.leads ?? [];
   const buildings: Building[] = buildingsData?.buildings ?? [];
 
-  const eligibleLeads = leads.filter(
-    (lead) => lead.stage !== "BOOKED" && lead.stage !== "LOST",
+  const eligibleLeads = useMemo(
+    () =>
+      leads.filter((lead) => lead.stage !== "BOOKED" && lead.stage !== "LOST"),
+    [leads],
+  );
+
+  const projects = useMemo(() => {
+    const uniqueProjects = new Map<
+      string,
+      { id: string; name: string; city: string }
+    >();
+
+    for (const building of buildings) {
+      const project = building.project;
+
+      if (project?.id && !uniqueProjects.has(project.id)) {
+        uniqueProjects.set(project.id, {
+          id: project.id,
+          name: project.name,
+          city: project.city,
+        });
+      }
+    }
+
+    return Array.from(uniqueProjects.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [buildings]);
+
+  const filteredBuildings = useMemo(
+    () => buildings.filter((building) => building.project.id === projectId),
+    [buildings, projectId],
+  );
+
+  const selectedBuilding = buildings.find(
+    (building) => building.id === buildingId,
   );
 
   const leadOptions = eligibleLeads.map((lead) => ({
@@ -61,181 +97,285 @@ export function CreateBookingDialog({
     value: lead.id,
   }));
 
-  const buildingOptions = buildings.map((building) => ({
-    label: `${building.name} · ${building.project.name}`,
+  const projectOptions = projects.map((project) => ({
+    label: project.city ? `${project.name} · ${project.city}` : project.name,
+    value: project.id,
+  }));
+
+  const buildingOptions = filteredBuildings.map((building) => ({
+    label: building.name,
     value: building.id,
   }));
 
-  const isLoadingOptions = leadsLoading || buildingsLoading;
-  const hasLoadingError = leadsError || buildingsError;
+  // Reset the form when the dialog opens.
+  useEffect(() => {
+    if (!open) return;
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    setLeadId("");
+    setProjectId("");
+    setBuildingId("");
+  }, [open]);
+
+  // Preselect a building and its project when opened from a building page.
+  useEffect(() => {
+    if (!open || !initialBuildingId || buildings.length === 0) return;
+
+    const initialBuilding = buildings.find(
+      (building) => building.id === initialBuildingId,
+    );
+
+    if (initialBuilding) {
+      setProjectId(initialBuilding.project.id);
+      setBuildingId(initialBuilding.id);
+    }
+  }, [open, initialBuildingId, buildings]);
+
+  const handleProjectChange = (value: string) => {
+    setProjectId(value);
+    setBuildingId("");
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (loading) return;
+    if (!leadId || !projectId || !buildingId) return;
 
-    setSubmitError("");
+    const validBuilding = filteredBuildings.some(
+      (building) => building.id === buildingId,
+    );
 
-    if (!leadId || !buildingId) {
-      setSubmitError("Please select a lead and a building.");
-      return;
-    }
+    if (!validBuilding) return;
 
+    // The parent handles errors and displays the toast.
     try {
-      await onCreate({
-        leadId,
-        buildingId,
-      });
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : "Could not create booking.",
-      );
+      await onCreate({ leadId, buildingId });
+    } catch {
+      // Intentionally no inline error card.
+      // Preserve the parent's toast and error handling.
     }
-  }
+  };
+
+  const isLoadingOptions = leadsLoading || buildingsLoading;
+  const hasOptionsError = leadsError || buildingsError;
 
   return (
     <Modal
-      open
-      onClose={() => {
-        if (!loading) onCancel();
-      }}
+      open={open}
+      onClose={onCancel}
       title="Create booking"
-      description="Select a customer and the building they want to book."
+      description="Select a lead, project, and building."
       loading={loading}
-      maxWidth="max-w-xl"
-      footer={
-        <div className="flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Lead */}
+        <div className="space-y-2">
+          <label
+            htmlFor="booking-lead"
+            className="flex items-center gap-2 text-sm font-medium text-foreground"
+          >
+            <UserRound
+              className="size-4 text-blue-600 dark:text-blue-400"
+              aria-hidden={true}
+            />
+            Lead <span className="text-destructive">*</span>
+          </label>
+
+          <Select
+            name="leadId"
+            value={leadId}
+            onChange={setLeadId}
+            options={leadOptions}
+            placeholder={leadsLoading ? "Loading leads..." : "Select a lead"}
+            disabled={loading || leadsLoading || leadsError}
+            required
+          />
+
+          {!leadsLoading && !leadsError && eligibleLeads.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No eligible leads available for booking.
+            </p>
+          )}
+        </div>
+
+        {/* Project */}
+        <div className="space-y-2">
+          <label
+            htmlFor="booking-project"
+            className="flex items-center gap-2 text-sm font-medium text-foreground"
+          >
+            <FolderKanban
+              className="size-4 text-violet-600 dark:text-violet-400"
+              aria-hidden={true}
+            />
+            Project <span className="text-destructive">*</span>
+          </label>
+
+          <Select
+            name="projectId"
+            value={projectId}
+            onChange={handleProjectChange}
+            options={projectOptions}
+            placeholder={
+              buildingsLoading ? "Loading projects..." : "Select a project"
+            }
+            disabled={
+              loading ||
+              buildingsLoading ||
+              buildingsError ||
+              projects.length === 0 ||
+              Boolean(initialBuildingId)
+            }
+            required
+          />
+
+          {!buildingsLoading && !buildingsError && projects.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No projects with buildings were found.
+            </p>
+          )}
+        </div>
+
+        {/* Building */}
+        <div className="space-y-2">
+          <label
+            htmlFor="booking-building"
+            className="flex items-center gap-2 text-sm font-medium text-foreground"
+          >
+            <Building2
+              className="size-4 text-emerald-600 dark:text-emerald-400"
+              aria-hidden={true}
+            />
+            Building <span className="text-destructive">*</span>
+          </label>
+
+          <Select
+            name="buildingId"
+            value={buildingId}
+            onChange={setBuildingId}
+            options={buildingOptions}
+            placeholder={
+              !projectId
+                ? "Select a project first"
+                : buildingsLoading
+                  ? "Loading buildings..."
+                  : "Select a building"
+            }
+            disabled={
+              loading ||
+              buildingsLoading ||
+              buildingsError ||
+              !projectId ||
+              filteredBuildings.length === 0 ||
+              Boolean(initialBuildingId)
+            }
+            required
+          />
+
+          {projectId && !buildingsLoading && filteredBuildings.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No buildings are available for this project.
+            </p>
+          )}
+
+          {initialBuildingId && !buildingsLoading && !selectedBuilding && (
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              The selected building could not be found in the loaded list.
+            </p>
+          )}
+        </div>
+
+        {/* Selected building summary */}
+        {selectedBuilding && (
+          <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <Building2 className="size-5" aria-hidden={true} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-foreground">
+                  {selectedBuilding.name}
+                </p>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedBuilding.project.name}
+                  {selectedBuilding.project.city
+                    ? ` · ${selectedBuilding.project.city}`
+                    : ""}
+                </p>
+
+                {(selectedBuilding.minPrice != null ||
+                  selectedBuilding.maxPrice != null) && (
+                  <div className="mt-2 flex items-start gap-1.5 text-sm font-medium text-foreground">
+                    <IndianRupee
+                      className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                      aria-hidden={true}
+                    />
+
+                    <span>
+                      {selectedBuilding.minPrice != null
+                        ? Number(selectedBuilding.minPrice).toLocaleString(
+                            "en-IN",
+                          )
+                        : "Price not specified"}
+
+                      {selectedBuilding.maxPrice != null
+                        ? ` – ₹${Number(selectedBuilding.maxPrice).toLocaleString("en-IN")}`
+                        : ""}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Data loading error stays separate from submission errors. */}
+        {hasOptionsError && (
+          <p className="text-sm text-muted-foreground">
+            Unable to load leads or buildings. Please try again.
+          </p>
+        )}
+
+        {/* Guidance */}
+        <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+          <CalendarCheck
+            className="mt-0.5 size-4 shrink-0"
+            aria-hidden={true}
+          />
+          <p>
+            Confirm the lead, project, and building before creating the booking.
+            Booking status and availability are managed separately.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 border-t border-border pt-4">
           <Button
             type="button"
             variant="outline"
-            size="lg"
             onClick={onCancel}
             disabled={loading}
-            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
 
           <Button
             type="submit"
-            form="create-booking-form"
-            size="lg"
-            loading={loading}
-            loadingText="Creating booking..."
-            leftIcon={CalendarCheck}
             disabled={
               loading ||
               isLoadingOptions ||
-              hasLoadingError ||
+              hasOptionsError ||
+              !leadId ||
+              !projectId ||
+              !buildingId ||
               eligibleLeads.length === 0 ||
-              buildings.length === 0
+              !filteredBuildings.some((building) => building.id === buildingId)
             }
-            className="w-full sm:w-auto"
           >
-            Create booking
+            {loading ? "Creating..." : "Create booking"}
           </Button>
         </div>
-      }
-    >
-      <form
-        id="create-booking-form"
-        onSubmit={handleSubmit}
-        noValidate
-        className="space-y-6"
-      >
-        {submitError && (
-          <div
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
-          >
-            {submitError}
-          </div>
-        )}
-
-        {hasLoadingError && (
-          <div
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
-          >
-            Could not load leads or buildings. Please close this dialog and try
-            again.
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <UserRound
-              size={17}
-              className="text-muted-foreground"
-              aria-hidden="true"
-            />
-            <h3 className="text-sm font-semibold text-foreground">Customer</h3>
-          </div>
-
-          <Select
-            label="Select lead"
-            placeholder={
-              isLoadingOptions ? "Loading leads..." : "Choose a customer"
-            }
-            options={leadOptions}
-            value={leadId}
-            onChange={(value) => {
-              setLeadId(value);
-              setSubmitError("");
-            }}
-            searchable
-            disabled={loading || isLoadingOptions || hasLoadingError}
-            required
-            helperText="Booked and lost leads are excluded."
-          />
-
-          {!isLoadingOptions &&
-            !hasLoadingError &&
-            eligibleLeads.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                No eligible leads are available for booking.
-              </p>
-            )}
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Building2
-              size={17}
-              className="text-muted-foreground"
-              aria-hidden="true"
-            />
-            <h3 className="text-sm font-semibold text-foreground">Property</h3>
-          </div>
-
-          <Select
-            label="Select building"
-            placeholder={
-              isLoadingOptions ? "Loading buildings..." : "Choose a building"
-            }
-            options={buildingOptions}
-            value={buildingId}
-            onChange={(value) => {
-              setBuildingId(value);
-              setSubmitError("");
-            }}
-            searchable
-            disabled={loading || isLoadingOptions || hasLoadingError}
-            required
-          />
-
-          {!isLoadingOptions && !hasLoadingError && buildings.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              Create a building before making a booking.
-            </p>
-          )}
-        </div>
-
-        <p className="rounded-lg border border-border bg-surface/60 px-4 py-3 text-xs leading-5 text-muted-foreground">
-          New bookings are created as confirmed. You can change the status later
-          from the bookings table. This booking does not change the
-          building&apos;s availability.
-        </p>
       </form>
     </Modal>
   );

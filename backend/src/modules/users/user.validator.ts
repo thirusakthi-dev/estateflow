@@ -19,10 +19,14 @@ export const updateUserSchema = z
       .email()
       .transform((value) => value.toLowerCase())
       .optional(),
+    password: z.string().min(8).max(100).optional(),
   })
   .refine(
-    (data) => data.name !== undefined || data.email !== undefined,
-    "Provide a name or email to update.",
+    (data) =>
+      data.name !== undefined ||
+      data.email !== undefined ||
+      data.password !== undefined,
+    "Provide a name, email, or password to update.",
   );
 
 export const updateUserStatusSchema = z.object({

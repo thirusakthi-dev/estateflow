@@ -6,16 +6,9 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-
-  return createMetadata({
-    title: "Building Details",
-    description: `View and manage building ${id} in EstateFlow.`,
-    path: `/buildings/${id}`,
-    noIndex: true,
-  });
-}
+export const metadata: Metadata = {
+  title: "Building Details",
+};
 
 export default function Page() {
   return <BuildingDetailPage />;

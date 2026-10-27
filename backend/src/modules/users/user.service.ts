@@ -31,7 +31,10 @@ export async function createEmployee(input: unknown) {
 
   const { name, email, password } = parsed.data;
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await prisma.user.findUnique({
+    where: { email },
+  });
+
   if (existing) {
     throw new ApiError(HTTP_STATUS.CONFLICT, "Email is already registered.");
   }
@@ -39,7 +42,12 @@ export async function createEmployee(input: unknown) {
   const passwordHash = await bcrypt.hash(password, 12);
 
   return prisma.user.create({
-    data: { name, email, passwordHash, role: "SALES_EMPLOYEE" },
+    data: {
+      name,
+      email,
+      passwordHash,
+      role: "SALES_EMPLOYEE",
+    },
     select: employeeSelect,
   });
 }
@@ -54,7 +62,10 @@ export async function listEmployees() {
 
 export async function getEmployeeById(id: string) {
   const employee = await prisma.user.findFirst({
-    where: { id, role: "SALES_EMPLOYEE" },
+    where: {
+      id,
+      role: "SALES_EMPLOYEE",
+    },
     select: employeeSelect,
   });
 
@@ -77,18 +88,34 @@ export async function updateEmployee(id: string, input: unknown) {
   }
 
   const employee = await getEmployeeById(id);
-  const { name, email } = parsed.data;
+  const { name, email, password } = parsed.data;
 
   if (email && email !== employee.email) {
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({
+      where: { email },
+    });
+
     if (existing) {
       throw new ApiError(HTTP_STATUS.CONFLICT, "Email is already registered.");
     }
   }
 
+  const data: {
+    name?: string;
+    email?: string;
+    passwordHash?: string;
+  } = {};
+
+  if (name !== undefined) data.name = name;
+  if (email !== undefined) data.email = email;
+
+  if (password) {
+    data.passwordHash = await bcrypt.hash(password, 12);
+  }
+
   return prisma.user.update({
-    where: { id },
-    data: { name, email },
+    where: { id: employee.id },
+    data,
     select: employeeSelect,
   });
 }

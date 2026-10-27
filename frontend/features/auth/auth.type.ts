@@ -26,3 +26,4 @@ export type CurrentUserResponse = {
     user: AuthUser;
   };
 };
+

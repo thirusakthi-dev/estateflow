@@ -43,9 +43,20 @@ export const getProjectById = asyncHandler(
 
 export const updateProject = asyncHandler(
   async (req: Request, res: Response) => {
+    const files = (req.files ?? []) as Express.Multer.File[];
+
+    const rawRemoveImageIds = req.body.removeImageIds;
+    const removeImageIds: string[] = Array.isArray(rawRemoveImageIds)
+      ? rawRemoveImageIds
+      : rawRemoveImageIds
+        ? [rawRemoveImageIds]
+        : [];
+
     const project = await projectService.updateProject(
       req.params.id!,
       req.body,
+      files,
+      removeImageIds,
     );
 
     res.status(HTTP_STATUS.OK).json({
@@ -55,6 +66,7 @@ export const updateProject = asyncHandler(
     });
   },
 );
+
 export const deleteProject = asyncHandler(
   async (req: Request, res: Response) => {
     const result = await projectService.deleteProject(req.params.id!);

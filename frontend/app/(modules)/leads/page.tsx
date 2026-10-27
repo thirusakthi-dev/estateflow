@@ -9,6 +9,8 @@ export const metadata: Metadata = createMetadata({
   noIndex: true,
 });
 
+export const instant = false;
+
 export default function LeadsPage() {
   return <LeadsContent />;
 }

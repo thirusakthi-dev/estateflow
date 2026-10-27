@@ -3,7 +3,10 @@ model Booking {
   leadId      String
   buildingId  String
   bookedById  String
-  status      BookingStatus @default(CONFIRMED)
+  status      BookingStatus @default(PENDING)
+
+  agreedPrice Decimal?      @db.Decimal(14, 2)
+
   bookedAt    DateTime      @default(now())
   cancelledAt DateTime?
 

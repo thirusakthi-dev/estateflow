@@ -6,7 +6,6 @@ import { LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
-
 type ButtonSize = "sm" | "md" | "lg" | "icon";
 
 type ButtonProps = Omit<HTMLMotionProps<"button">, "children"> & {
@@ -74,8 +73,8 @@ export function Button({
       }
       transition={{ duration: 0.16 }}
       className={[
-        "inline-flex min-w-0 items-center justify-center gap-2 rounded-lg",
-        "whitespace-nowrap font-semibold tracking-[0.01em]",
+        "inline-flex min-w-0 max-w-full items-center justify-center gap-2 rounded-lg",
+        "font-semibold tracking-[0.01em]",
         "transition-[background-color,color,border-color,opacity] duration-200",
         "focus-visible:outline-2 focus-visible:outline-offset-2",
         "focus-visible:outline-slate-500",
@@ -83,6 +82,7 @@ export function Button({
         variants[variant],
         sizes[size],
         block && !isIconOnly ? "w-full" : "",
+        isIconOnly ? "shrink-0" : "",
         className,
       ]
         .filter(Boolean)
@@ -96,7 +96,7 @@ export function Button({
             className="shrink-0 animate-spin"
           />
           {!isIconOnly && (
-            <span className="whitespace-nowrap">{loadingText ?? children}</span>
+            <span className="min-w-0 truncate">{loadingText ?? children}</span>
           )}
         </>
       ) : (
@@ -105,7 +105,9 @@ export function Button({
             <LeftIcon size={16} aria-hidden="true" className="shrink-0" />
           )}
 
-          {!isIconOnly && <span className="whitespace-nowrap">{children}</span>}
+          {!isIconOnly && (
+            <span className="min-w-0 break-words">{children}</span>
+          )}
 
           {RightIcon && (
             <RightIcon size={16} aria-hidden="true" className="shrink-0" />

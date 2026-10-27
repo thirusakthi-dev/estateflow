@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   CalendarCheck,
@@ -38,6 +39,7 @@ import type {
 import { BookingsTable } from "./bookings-table";
 import { CreateBookingDialog } from "./create-booking-dialog";
 import { BookingSummaryDialog } from "./booking-summary-dialog";
+import { getApiErrorMessage } from "@/lib/api";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -49,13 +51,18 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export function BookingsContent() {
   const toast = useToast();
+  const router = useRouter();
   const reduceMotion = useReducedMotion();
+  const searchParams = useSearchParams();
+
+  const initialBuildingId = searchParams.get("buildingId");
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
 
   const {
     data: bookingsResponse,
@@ -72,6 +79,13 @@ export function BookingsContent() {
   const cancelBookingMutation = useCancelBooking();
   const updateBookingStatusMutation = useUpdateBookingStatus();
 
+  // Open the form automatically when a building ID is in the URL.
+  useEffect(() => {
+    if (initialBuildingId) {
+      setShowCreate(true);
+    }
+  }, [initialBuildingId]);
+
   const bookings = bookingsResponse?.bookings ?? [];
   const total = bookingsResponse?.pagination.total ?? 0;
   const totalPages = bookingsResponse?.pagination.totalPages ?? 1;
@@ -80,7 +94,7 @@ export function BookingsContent() {
 
   const showLoading = useMinimumLoading(isInitialLoading || isRefreshing, 1000);
 
-  // These counts represent the current page, not the entire database.
+  // Statistics are based on the currently loaded page.
   const confirmedCount = bookings.filter(
     (booking) => booking.status === "CONFIRMED",
   ).length;
@@ -99,27 +113,34 @@ export function BookingsContent() {
     }
   };
 
+  const closeCreateDialog = () => {
+    if (createBookingMutation.isPending) return;
+
+    setShowCreate(false);
+
+    if (initialBuildingId) {
+      router.replace("/bookings", { scroll: false });
+    }
+  };
+
   const handleCreate = async (input: CreateBookingInput) => {
     try {
       await createBookingMutation.mutateAsync(input);
-
-      setShowCreate(false);
-      setPage(1);
 
       toast.success({
         title: "Booking created",
         description: "The booking was created successfully.",
       });
+
+      closeCreateDialog();
     } catch (error) {
       toast.error({
         title: "Unable to create booking",
-        description: getErrorMessage(
+        description: getApiErrorMessage(
           error,
-          "Something went wrong. Please try again.",
+          "Unable to create the booking. Please try again.",
         ),
       });
-
-      throw error;
     }
   };
 
@@ -296,11 +317,9 @@ export function BookingsContent() {
 
         {showCreate && (
           <CreateBookingDialog
-            onCancel={() => {
-              if (!createBookingMutation.isPending) {
-                setShowCreate(false);
-              }
-            }}
+            open={bookingOpen}
+            initialBuildingId={initialBuildingId ?? undefined}
+            onCancel={closeCreateDialog}
             onCreate={handleCreate}
             loading={createBookingMutation.isPending}
           />
@@ -447,11 +466,9 @@ export function BookingsContent() {
         {/* Create booking */}
         {showCreate && (
           <CreateBookingDialog
-            onCancel={() => {
-              if (!createBookingMutation.isPending) {
-                setShowCreate(false);
-              }
-            }}
+            open={showCreate}
+            initialBuildingId={initialBuildingId ?? undefined}
+            onCancel={closeCreateDialog}
             onCreate={handleCreate}
             loading={createBookingMutation.isPending}
           />

@@ -62,14 +62,23 @@ export function useUpdateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateProjectInput }) =>
-      updateProject(id, input),
+    mutationFn: ({
+      id,
+      input,
+      images,
+      removeImageIds,
+    }: {
+      id: string;
+      input: UpdateProjectInput;
+      images?: File[];
+      removeImageIds?: string[];
+    }) => updateProject(id, input, images, removeImageIds),
 
     onSuccess: (project) => {
       queryClient.setQueryData(projectKeys.detail(project.id), project);
 
       return queryClient.invalidateQueries({
-        queryKey: projectKeys.lists(),
+        queryKey: projectKeys.all,
       });
     },
   });

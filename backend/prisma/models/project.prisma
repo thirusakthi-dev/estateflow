@@ -5,6 +5,14 @@ model Project {
   address     String
   city        String
   status      ProjectStatus @default(ACTIVE)
+
+  minPrice    Decimal?      @db.Decimal(14, 2)
+  maxPrice    Decimal?      @db.Decimal(14, 2)
+
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 

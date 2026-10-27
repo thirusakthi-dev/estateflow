@@ -18,7 +18,9 @@ projectRouter.get("/", listProjects);
 projectRouter.get("/:id", getProjectById);
 
 projectRouter.post("/", authorize("ADMIN"), uploadImages, createProject);
-projectRouter.patch("/:id", authorize("ADMIN"), updateProject);
+
+projectRouter.patch("/:id", authorize("ADMIN"), uploadImages, updateProject);
+
 projectRouter.delete("/:id", authorize("ADMIN"), deleteProject);
 
 export { projectRouter };

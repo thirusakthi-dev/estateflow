@@ -1,3 +1,4 @@
+
 import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HTTP_STATUS } from "../../constants/http-status";
@@ -14,6 +15,8 @@ const buildingSelect = {
   projectId: true,
   name: true,
   description: true,
+  minPrice: true,
+  maxPrice: true,
   totalFloors: true,
   contactName: true,
   contactPhone: true,
@@ -59,6 +62,30 @@ const buildingSelect = {
   },
 } satisfies Prisma.BuildingSelect;
 
+type UploadedImage = {
+  imageUrl: string;
+  publicId: string;
+};
+
+function validateFinalPriceRange(
+  minPrice: Prisma.Decimal | number | null,
+  maxPrice: Prisma.Decimal | number | null,
+) {
+  if (
+    minPrice !== null &&
+    maxPrice !== null &&
+    Number(minPrice) > Number(maxPrice)
+  ) {
+    throw new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      "Minimum price cannot exceed maximum price.",
+    );
+  }
+}
+
+/**
+ * Create a building with optional pricing and images.
+ */
 export async function createBuilding(
   input: unknown,
   files: Express.Multer.File[] = [],
@@ -82,7 +109,10 @@ export async function createBuilding(
 
   const project = await prisma.project.findUnique({
     where: { id: parsed.data.projectId },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+    },
   });
 
   if (!project) {
@@ -96,7 +126,7 @@ export async function createBuilding(
     );
   }
 
-  const uploaded: { imageUrl: string; publicId: string }[] = [];
+  const uploaded: UploadedImage[] = [];
 
   try {
     for (const file of files) {
@@ -128,6 +158,9 @@ export async function createBuilding(
   }
 }
 
+/**
+ * List buildings with search, filters and pagination.
+ */
 export async function listBuildings(input: unknown) {
   const parsed = listBuildingsSchema.safeParse(input);
 
@@ -202,6 +235,9 @@ export async function listBuildings(input: unknown) {
   };
 }
 
+/**
+ * Get a building by ID.
+ */
 export async function getBuildingById(id: string) {
   const building = await prisma.building.findUnique({
     where: { id },
@@ -215,6 +251,9 @@ export async function getBuildingById(id: string) {
   return building;
 }
 
+/**
+ * Update building details, pricing and images.
+ */
 export async function updateBuilding(
   id: string,
   input: unknown,
@@ -252,7 +291,10 @@ export async function updateBuilding(
       throw new Error("Invalid removed image IDs");
     }
   } catch {
-    throw new ApiError(HTTP_STATUS.BAD_REQUEST, "Invalid removed image IDs.");
+    throw new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      "Invalid removed image IDs.",
+    );
   }
 
   const parsed = updateBuildingSchema.safeParse(body);
@@ -276,6 +318,8 @@ export async function updateBuilding(
     where: { id },
     select: {
       id: true,
+      minPrice: true,
+      maxPrice: true,
       images: {
         select: {
           id: true,
@@ -288,6 +332,19 @@ export async function updateBuilding(
   if (!existing) {
     throw new ApiError(HTTP_STATUS.NOT_FOUND, "Building not found.");
   }
+
+  // Validate the final range, including prices not supplied in this update.
+  const finalMinPrice =
+    parsed.data.minPrice === undefined
+      ? existing.minPrice
+      : parsed.data.minPrice;
+
+  const finalMaxPrice =
+    parsed.data.maxPrice === undefined
+      ? existing.maxPrice
+      : parsed.data.maxPrice;
+
+  validateFinalPriceRange(finalMinPrice, finalMaxPrice);
 
   const uniqueRemovedIds = [...new Set(removedImageIds)];
 
@@ -313,7 +370,7 @@ export async function updateBuilding(
     );
   }
 
-  const uploaded: { imageUrl: string; publicId: string }[] = [];
+  const uploaded: UploadedImage[] = [];
 
   try {
     for (const file of files) {
@@ -331,7 +388,8 @@ export async function updateBuilding(
       }
 
       if (uploaded.length > 0) {
-        const remainingCount = existing.images.length - removedImages.length;
+        const remainingCount =
+          existing.images.length - removedImages.length;
 
         await tx.buildingImage.createMany({
           data: uploaded.map((image, index) => ({
@@ -344,7 +402,7 @@ export async function updateBuilding(
         });
       }
 
-      // Keep exactly one cover image when images exist.
+      // Keep exactly one cover image whenever images exist.
       const remainingImages = await tx.buildingImage.findMany({
         where: { buildingId: id },
         select: { id: true },
@@ -370,14 +428,14 @@ export async function updateBuilding(
       });
     });
 
-    // Remove deleted images from Cloudinary after the DB update succeeds.
+    // Delete removed Cloudinary images after the database update succeeds.
     await Promise.allSettled(
       removedImages.map((image) => deleteImage(image.publicId)),
     );
 
     return building;
   } catch (error) {
-    // Clean up newly uploaded Cloudinary files if the DB update fails.
+    // Clean up newly uploaded images if the database operation fails.
     await Promise.allSettled(
       uploaded.map((image) => deleteImage(image.publicId)),
     );
@@ -386,6 +444,9 @@ export async function updateBuilding(
   }
 }
 
+/**
+ * Delete a building and its associated images.
+ */
 export async function deleteBuilding(id: string) {
   const building = await prisma.building.findUnique({
     where: { id },

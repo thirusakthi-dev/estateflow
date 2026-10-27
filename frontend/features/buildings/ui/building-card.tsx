@@ -2,196 +2,226 @@
 
 import {
   Building2,
-  Layers3,
   MapPin,
+  Layers3,
+  IndianRupee,
+  Image as ImageIcon,
+  ArrowUpRight,
   Pencil,
   Trash2,
-  ArrowRight,
-  Image as ImageIcon,
 } from "lucide-react";
-import type { Building } from "../lib/buildings.types";
+import { useState } from "react";
 
-type BuildingCardProps = {
-  building: Building;
-  onClick?: (building: Building) => void;
-  onEdit?: (building: Building) => void;
-  onDelete?: (building: Building) => void;
+type BuildingCardData = {
+  id: string;
+  name: string;
+  description?: string | null;
+  totalFloors?: number | null;
+  minPrice?: number | string | null;
+  maxPrice?: number | string | null;
+  project?: {
+    name: string;
+    city?: string | null;
+  } | null;
+  images?: Array<{
+    id: string;
+    imageUrl: string;
+    alt?: string | null;
+    isCover: boolean;
+    sortOrder?: number;
+  }>;
 };
 
-export function BuildingCard({
+type BuildingCardProps<T extends BuildingCardData> = {
+  building: T;
+  onClick?: (building: T) => void;
+  onEdit?: (building: T) => void;
+  onDelete?: (building: T) => void;
+};
+
+function formatPrice(price?: number | string | null) {
+  if (price == null || price === "") return null;
+
+  const value = Number(price);
+  if (!Number.isFinite(value)) return null;
+
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function getPriceLabel(
+  minPrice?: number | string | null,
+  maxPrice?: number | string | null,
+) {
+  const min = formatPrice(minPrice);
+  const max = formatPrice(maxPrice);
+
+  if (min && max) return min === max ? min : `${min} – ${max}`;
+  if (min) return `From ${min}`;
+  if (max) return `Up to ${max}`;
+
+  return "Price on request";
+}
+
+export default function BuildingCard<T extends BuildingCardData>({
   building,
   onClick,
   onEdit,
   onDelete,
-}: BuildingCardProps) {
+}: BuildingCardProps<T>) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const images = [...(building.images ?? [])].sort(
+    (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+  );
+
   const coverImage =
-    building.images?.find((image) => image.isCover) ?? building.images?.[0];
+    images.find((image) => image.isCover && image.imageUrl?.trim()) ??
+    images.find((image) => image.imageUrl?.trim());
 
-  const totalUnits = building.units?.length ?? 0;
+  const showImage = Boolean(coverImage?.imageUrl) && !imageFailed;
 
-  const availableUnits =
-    building.units?.filter((unit) => unit.status === "AVAILABLE").length ?? 0;
-
-  const occupiedUnits = totalUnits - availableUnits;
+  const city = building.project?.city?.trim() || "Location unavailable";
+  const projectName = building.project?.name?.trim() || "Project not assigned";
 
   return (
-    <article className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950">
-      {/* Image */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => onClick?.(building)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onClick?.(building);
-          }
-        }}
-        aria-label={`View details for ${building.name}`}
-        className="relative h-44 cursor-pointer overflow-hidden bg-slate-100 dark:bg-slate-900"
-      >
-        {coverImage ? (
+    <article className="group flex h-full min-h-[440px] flex-col overflow-hidden rounded-2xl border border-border bg-background transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+      {/* Building image: fixed height */}
+      <div className="relative h-48 shrink-0 overflow-hidden bg-surface">
+        {showImage ? (
           <img
-            src={coverImage.imageUrl}
-            alt={coverImage.alt || building.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            src={coverImage!.imageUrl}
+            alt={coverImage?.alt?.trim() || building.name}
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <Building2
-              className="h-12 w-12 text-slate-400"
-              strokeWidth={1.25}
-              aria-hidden="true"
-            />
-          </div>
-        )}
-
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
-
-        {building.images?.length > 0 && (
-          <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-md bg-black/60 px-2 py-1 text-xs font-medium text-white">
-            <ImageIcon className="h-3.5 w-3.5" />
-            {building.images.length}{" "}
-            {building.images.length === 1 ? "image" : "images"}
-          </span>
-        )}
-
-        {/* Actions */}
-        <div className="absolute right-3 top-3 flex gap-2">
-          {onEdit && (
-            <button
-              type="button"
-              aria-label={`Edit ${building.name}`}
-              title="Edit building"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEdit(building);
-              }}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/70 bg-white/95 text-slate-700 shadow-sm transition hover:bg-white dark:bg-slate-900/95 dark:text-slate-200"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-          )}
-
-          {onDelete && (
-            <button
-              type="button"
-              aria-label={`Delete ${building.name}`}
-              title="Delete building"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDelete(building);
-              }}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/70 bg-white/95 text-red-600 shadow-sm transition hover:bg-red-50 dark:bg-slate-900/95 dark:hover:bg-red-950"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Content */}
-      <button
-        type="button"
-        onClick={() => onClick?.(building)}
-        className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
-        aria-label={`View details for ${building.name}`}
-      >
-        <div className="space-y-4 p-4">
-          {/* Name and project */}
-          <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold text-slate-900 dark:text-white">
-              {building.name}
-            </h3>
-
-            <div className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
-              <MapPin className="h-4 w-4 shrink-0 text-blue-500" />
-              <span className="truncate">
-                {building.project?.city
-                  ? `${building.project.name} · ${building.project.city}`
-                  : (building.project?.name ?? "No project")}
-              </span>
-            </div>
-          </div>
-
-          {/* Description */}
-          {building.description && (
-            <p className="line-clamp-2 text-sm leading-5 text-slate-600 dark:text-slate-400">
-              {building.description}
-            </p>
-          )}
-
-          {/* Building stats */}
-          <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/40">
-                <Layers3 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Total units
-                </p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                  {totalUnits}
-                </p>
-              </div>
+          <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-indigo-500/10 via-violet-500/10 to-sky-500/10">
+            <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/20">
+              <Building2 size={34} strokeWidth={1.6} />
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40">
-                <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Total floors
-                </p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                  {building.totalFloors ?? "—"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Availability */}
-          <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                {availableUnits} available
-              </p>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                {occupiedUnits} other {occupiedUnits === 1 ? "unit" : "units"}
-              </p>
-            </div>
-
-            <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-blue-600 transition group-hover:gap-2 dark:text-blue-400">
-              View details
-              <ArrowRight className="h-4 w-4" />
+            <span className="text-xs text-muted-foreground">
+              No image available
             </span>
           </div>
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 to-transparent" />
+
+        <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-2">
+          <span className="truncate rounded-lg border border-white/20  px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md">
+            {projectName}
+          </span>
+
+          {images.length > 0 && (
+            <span className="flex shrink-0 items-center gap-1.5 rounded-lg bg-black/35 px-2.5 py-1.5 text-xs text-white backdrop-blur-md">
+              <ImageIcon size={13} />
+              {images.length}
+            </span>
+          )}
         </div>
-      </button>
+
+        {/* Edit and delete actions */}
+        {(onEdit || onDelete) && (
+          <div className="absolute right-3 top-3 flex gap-2">
+            {onEdit && (
+              <button
+                type="button"
+                aria-label={`Edit ${building.name}`}
+                onClick={() => onEdit(building)}
+                className="flex size-9 items-center justify-center rounded-xl bg-white/95 text-indigo-600 shadow-sm transition-colors hover:bg-indigo-600 hover:text-white"
+              >
+                <Pencil size={15} />
+              </button>
+            )}
+
+            {onDelete && (
+              <button
+                type="button"
+                aria-label={`Delete ${building.name}`}
+                onClick={() => onDelete(building)}
+                className="flex size-9 items-center justify-center rounded-xl bg-white/95 text-rose-600 shadow-sm transition-colors hover:bg-rose-600 hover:text-white"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Details fill remaining height */}
+      <div className="flex flex-1 flex-col p-5">
+        <h3
+          className="line-clamp-1 min-h-7 text-lg font-semibold text-foreground"
+          title={building.name}
+        >
+          {building.name || "Unnamed building"}
+        </h3>
+
+        <div className="mt-2 flex min-h-5 items-center gap-2 text-sm text-muted-foreground">
+          <MapPin size={16} className="shrink-0 text-emerald-500" />
+          <span className="truncate">{city}</span>
+        </div>
+
+        {/* Price range */}
+        <div className="mt-4 flex min-h-[76px] items-center justify-between gap-3 rounded-xl border border-border bg-surface/60 p-3.5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <IndianRupee size={20} />
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Price range</p>
+              <p
+                className="truncate text-sm font-semibold text-foreground"
+                title={getPriceLabel(building.minPrice, building.maxPrice)}
+              >
+                {getPriceLabel(building.minPrice, building.maxPrice)}
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400"
+            title={
+              building.totalFloors != null
+                ? `${building.totalFloors} floors`
+                : "Floor count unavailable"
+            }
+          >
+            <Layers3 size={20} />
+          </div>
+        </div>
+
+        {/* Fixed-height floor information area */}
+        <div className="mt-3 min-h-6 text-sm text-muted-foreground">
+          {building.totalFloors != null && (
+            <p>
+              <span className="font-medium text-foreground">
+                {building.totalFloors}
+              </span>{" "}
+              {building.totalFloors === 1 ? "floor" : "floors"}
+            </p>
+          )}
+        </div>
+
+        {/* Button stays at the bottom */}
+        {onClick && (
+          <button
+            type="button"
+            onClick={() => onClick(building)}
+            className="mt-auto flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            View details
+            <ArrowUpRight size={16} />
+          </button>
+        )}
+      </div>
     </article>
   );
 }

@@ -26,6 +26,7 @@ export type CreateEmployeeInput = {
 export type UpdateEmployeeInput = {
   name?: string;
   email?: string;
+  password?: string;
 };
 
 export type UpdateEmployeeStatusInput = {

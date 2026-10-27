@@ -404,41 +404,42 @@ export function LeadsContent() {
       >
         {/* Lead summary cards */}
 
-        <StatsCard
-          title="Total Leads"
-          value={total}
-          description="Across all pages"
-          icon={Users}
-          tone="blue"
-          index={0}
-        />
+  <StatsCard
+    title="Total Leads"
+    value={total}
+    description="Across all pages"
+    icon={Users}
+    tone="blue"
+    index={0}
+  />
 
-        <StatsCard
-          title="New Leads"
-          value={newLeadsCount}
-          description="On this page"
-          icon={UserPlus}
-          tone="violet"
-          index={1}
-        />
+  <StatsCard
+    title="New Leads"
+    value={newLeadsCount}
+    description="On this page"
+    icon={UserPlus}
+    tone="violet"
+    index={1}
+  />
 
-        <StatsCard
-          title="Active Pipeline"
-          value={activeLeadsCount}
-          description="On this page"
-          icon={MessagesSquare}
-          tone="amber"
-          index={2}
-        />
+  <StatsCard
+    title="Active Pipeline"
+    value={activeLeadsCount}
+    description="On this page"
+    icon={MessagesSquare}
+    tone="amber"
+    index={2}
+  />
 
-        <StatsCard
-          title="Booked Leads"
-          value={bookedLeadsCount}
-          description="On this page"
-          icon={CalendarCheck}
-          tone="green"
-          index={3}
-        />
+  <StatsCard
+    title="Booked Leads"
+    value={bookedLeadsCount}
+    description="On this page"
+    icon={CalendarCheck}
+    tone="green"
+    index={3}
+  />
+
       </motion.section>
 
       <AnimatePresence mode="wait" initial={false}>

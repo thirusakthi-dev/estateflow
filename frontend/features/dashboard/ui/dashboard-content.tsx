@@ -38,7 +38,7 @@ export default function DashboardContent() {
   const { summary, charts, recentLeads, recentBookings } = data;
 
   return (
-    <main className="mx-auto min-w-0 w-full max-w-7xl space-y-5 px-4 sm:space-y-6 sm:px-6 lg:px-8">
+    <main className="space-y-5 ">
       <PageHeader
         title="Dashboard"
         description="Here's an overview of your real estate operations."
@@ -51,14 +51,14 @@ export default function DashboardContent() {
             aria-label={
               isFetching ? "Refreshing dashboard" : "Refresh dashboard"
             }
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw
               size={15}
               className={isFetching && !reduceMotion ? "animate-spin" : ""}
               aria-hidden="true"
             />
-            {isFetching ? "Refreshing..." : "Refresh"}
+            {/* {isFetching ? "Refreshing..." : "Refresh"} */}
           </button>
         }
       />

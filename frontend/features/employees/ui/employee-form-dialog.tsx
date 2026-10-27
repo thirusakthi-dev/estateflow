@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import axios from "axios";
-import { Save } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Save } from "lucide-react";
 
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ export function EmployeeFormDialog({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
   const toast = useToast();
@@ -42,6 +43,7 @@ export function EmployeeFormDialog({
     setName(employee?.name ?? "");
     setEmail(employee?.email ?? "");
     setPassword("");
+    setShowPassword(false);
     setSubmitError("");
   }, [open, employee]);
 
@@ -55,14 +57,31 @@ export function EmployeeFormDialog({
 
     try {
       if (employee) {
+        const input: {
+          name: string;
+          email: string;
+          password?: string;
+        } = {
+          name: name.trim(),
+          email: email.trim(),
+        };
+
+        // Only send a password if a new one was entered.
+        if (password.length > 0) {
+          input.password = password;
+        }
+
         await updateMutation.mutateAsync({
           id: employee.id,
-          input: { name: name.trim(), email: email.trim() },
+          input,
         });
 
         toast.success({
           title: "Employee updated",
-          description: "Employee details have been updated.",
+          description:
+            password.length > 0
+              ? "Employee details and password have been updated."
+              : "Employee details have been updated.",
         });
       } else {
         await createMutation.mutateAsync({
@@ -81,7 +100,9 @@ export function EmployeeFormDialog({
     } catch (error) {
       const message = axios.isAxiosError(error)
         ? error.response?.data?.message || "Unable to save employee."
-        : "Unable to save employee.";
+        : error instanceof Error
+          ? error.message
+          : "Unable to save employee.";
 
       setSubmitError(message);
 
@@ -99,7 +120,7 @@ export function EmployeeFormDialog({
       title={isEditing ? "Edit employee" : "Add sales employee"}
       description={
         isEditing
-          ? "Update the employee's account details."
+          ? "Update account details or set a new password."
           : "Create an account for a new sales employee."
       }
       loading={isPending}
@@ -158,28 +179,59 @@ export function EmployeeFormDialog({
           disabled={isPending}
         />
 
-        {!isEditing && (
-          <Input
-            label="Temporary password"
-            type="password"
-            placeholder="At least 8 characters"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={8}
-            maxLength={100}
-            autoComplete="new-password"
-            required
-            disabled={isPending}
-            helperText="Share this securely with the employee. A password-reset flow can be added later."
-          />
-        )}
+        <div className="space-y-2">
+          <label
+            htmlFor="employee-password"
+            className="flex items-center gap-2 text-sm font-medium text-foreground"
+          >
+            <KeyRound
+              className="size-4 text-violet-600 dark:text-violet-400"
+              aria-hidden={true}
+            />
+            {isEditing ? "New password" : "Temporary password"}
+            {!isEditing && <span className="text-destructive">*</span>}
+          </label>
 
-        {isEditing && (
-          <p className="text-sm text-muted-foreground">
-            Password changes should be handled through a secure password-reset
-            flow.
+          <div className="relative">
+            <Input
+              id="employee-password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              placeholder={
+                isEditing
+                  ? "Leave blank to keep current password"
+                  : "At least 8 characters"
+              }
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={8}
+              maxLength={100}
+              autoComplete="new-password"
+              required={!isEditing}
+              disabled={isPending}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowPassword((current) => !current)}
+              disabled={isPending}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {showPassword ? (
+                <EyeOff className="size-4" aria-hidden={true} />
+              ) : (
+                <Eye className="size-4" aria-hidden={true} />
+              )}
+            </button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {isEditing
+              ? "Optional. Enter at least 8 characters to change the password. Leave blank to keep the current password."
+              : "Use at least 8 characters. Share the temporary password securely with the employee."}
           </p>
-        )}
+        </div>
       </form>
     </Modal>
   );

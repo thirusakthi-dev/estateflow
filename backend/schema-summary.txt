@@ -1,0 +1,271 @@
+﻿
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\schema.prisma =====
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\booking.prisma =====
+model Booking {
+  id          String        @id @default(cuid())
+  leadId      String
+  buildingId  String
+  bookedById  String
+  status      BookingStatus @default(CONFIRMED)
+  bookedAt    DateTime      @default(now())
+  cancelledAt DateTime?
+
+  lead     Lead     @relation(fields: [leadId], references: [id])
+  building Building @relation(fields: [buildingId], references: [id])
+  bookedBy User     @relation(fields: [bookedById], references: [id])
+
+  @@index([leadId])
+  @@index([buildingId, status])
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\building.prisma =====
+model Building {
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  description  String?
+  totalFloors  Int?
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bookings Booking[]
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  units   PropertyUnit[]
+  images  BuildingImage[]
+
+  @@unique([projectId, name])
+}
+
+model BuildingImage {
+  id         String   @id @default(cuid())
+  buildingId String
+  imageUrl   String
+  publicId   String   @unique
+  alt        String?
+  isCover    Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@index([buildingId, sortOrder])
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\enums.prisma =====
+enum UserRole {
+  ADMIN
+  SALES_EMPLOYEE
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  SITE_VISIT
+  INTERESTED
+  NEGOTIATION
+  BOOKED
+  LOST
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum UnitType {
+  APARTMENT
+  VILLA
+  PLOT
+  SHOP
+  OFFICE
+}
+
+enum UnitStatus {
+  AVAILABLE
+  BOOKED
+  BLOCKED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum FollowUpOutcome {
+  CALL_BACK
+  INTERESTED
+  SITE_VISIT_PLANNED
+  NEGOTIATION
+  NOT_INTERESTED
+  READY_TO_BOOK
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\follow-up.prisma =====
+model FollowUp {
+  id           String           @id @default(cuid())
+  leadId       String
+  assignedToId String
+  scheduledAt  DateTime
+  status       FollowUpStatus   @default(PENDING)
+  outcome      FollowUpOutcome?
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  lead       Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedTo User @relation(fields: [assignedToId], references: [id])
+
+  @@index([assignedToId, status, scheduledAt])
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\lead.prisma =====
+model Lead {
+  id           String    @id @default(cuid())
+  name         String
+  email        String?
+  phone        String
+  source       String?
+  stage        LeadStage @default(NEW)
+  assignedToId String?
+  createdById  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignedTo User?      @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  createdBy  User       @relation("CreatedLeads", fields: [createdById], references: [id])
+  notes      LeadNote[]
+  followUps  FollowUp[]
+  bookings   Booking[]
+
+  @@index([assignedToId, stage])
+  @@index([name])
+  @@index([phone])
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  leadId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  lead   Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([leadId, createdAt])
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\project-image.prisma =====
+model ProjectImage {
+  id        String   @id @default(cuid())
+  projectId String
+  imageUrl  String
+  publicId  String   @unique
+  alt       String?
+  isCover   Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, sortOrder])
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\project-unit-image.prisma =====
+model PropertyUnitImage {
+  id        String   @id @default(cuid())
+  unitId    String
+  imageUrl  String
+  publicId  String   @unique
+  alt       String?
+  isCover   Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  unit PropertyUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId, sortOrder])
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\project.prisma =====
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  address     String
+  city        String
+  status      ProjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  buildings Building[]
+  images    ProjectImage[]
+
+  @@index([city, status])
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\property-unit.prisma =====
+model PropertyUnit {
+  id         String     @id @default(cuid())
+  buildingId String
+  unitNumber String
+  type       UnitType
+  price      Decimal    @db.Decimal(14, 2)
+  bedrooms   Int?
+  bathrooms  Int?
+  area       Decimal?   @db.Decimal(10, 2)
+  areaUnit   String?    @default("SQ_FT")
+  status     UnitStatus @default(AVAILABLE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  building Building @relation(fields: [buildingId], references: [id])
+
+  images PropertyUnitImage[]
+
+  @@unique([buildingId, unitNumber])
+  @@index([status, type])
+}
+
+===== C:\Users\THIRU\Documents\EstateFlow\backend\prisma\models\user.prisma =====
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  avatarUrl    String?
+  linkedinUrl  String?
+  websiteUrl   String?
+  role         UserRole @default(SALES_EMPLOYEE)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignedLeads Lead[]     @relation("AssignedLeads")
+  createdLeads  Lead[]     @relation("CreatedLeads")
+  leadNotes     LeadNote[]
+  followUps     FollowUp[]
+  bookings      Booking[]
+}

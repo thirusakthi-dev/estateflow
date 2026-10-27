@@ -11,12 +11,12 @@ import {
   Plus,
   RefreshCw,
   ServerCrash,
-  XCircle,
 } from "lucide-react";
 import axios from "axios";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatsCard } from "@/components/ui/stats-card";
@@ -35,6 +35,7 @@ import type {
   FollowUpFilters,
   FollowUpOutcome,
   FollowUpStatus,
+  UpdateFollowUpInput,
 } from "../lib/follow-ups.types";
 
 import { FollowUpCard } from "./follow-up-card";
@@ -86,14 +87,21 @@ export function FollowUpsContent() {
   const followUps = data?.followUps ?? [];
   const pagination = data?.pagination;
 
-  // Search the currently loaded page without changing the API contract.
   const visibleFollowUps = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     if (!query) return followUps;
 
     return followUps.filter((followUp) =>
-      [followUp.id, followUp.status, followUp.outcome].some((value) =>
+      [
+        followUp.id,
+        followUp.status,
+        followUp.outcome,
+        followUp.lead.name,
+        followUp.lead.phone,
+        followUp.assignedTo.name,
+        followUp.notes,
+      ].some((value) =>
         String(value ?? "")
           .toLowerCase()
           .includes(query),
@@ -185,7 +193,15 @@ export function FollowUpsContent() {
     try {
       await updateMutation.mutateAsync({
         id: followUp.id,
-        input: { status: "CANCELLED" },
+        input: {
+          status: "CANCELLED",
+        },
+      });
+
+      setOutcomeById((current) => {
+        const updated = { ...current };
+        delete updated[followUp.id];
+        return updated;
       });
 
       toast.success({
@@ -197,6 +213,23 @@ export function FollowUpsContent() {
         title: "Unable to cancel follow-up",
         description: errorMessage(error, "Please try again."),
       });
+    }
+  }
+
+  async function handleEdit(followUp: FollowUp, input: UpdateFollowUpInput) {
+    try {
+      await updateMutation.mutateAsync({
+        id: followUp.id,
+        input,
+      });
+
+      toast.success({
+        title: "Follow-up updated",
+        description: "Your changes have been saved.",
+      });
+    } catch (error) {
+      // The card displays this error inside its edit form.
+      throw new Error(errorMessage(error, "Unable to update follow-up."));
     }
   }
 
@@ -219,6 +252,21 @@ export function FollowUpsContent() {
   function handleStatusChange(value: string) {
     setStatusFilter(value);
     setPage(1);
+  }
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function handleCreated() {
+    setShowCreate(false);
+
+    if (page !== 1) {
+      setPage(1);
+    } else {
+      void refetch();
+    }
   }
 
   return (
@@ -270,10 +318,7 @@ export function FollowUpsContent() {
       {/* Search and filters */}
       <SearchFilterToolbar
         search={search}
-        onSearchChange={(value) => {
-          setSearch(value);
-          setPage(1);
-        }}
+        onSearchChange={handleSearchChange}
         searchPlaceholder="Search follow-ups..."
         searchLabel="Search follow-ups"
         filters={[
@@ -352,7 +397,7 @@ export function FollowUpsContent() {
             </div>
           )}
 
-          <div className="space-y-3">
+         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {visibleFollowUps.map((followUp) => {
               const isPending = followUp.status === "PENDING";
 
@@ -361,62 +406,56 @@ export function FollowUpsContent() {
                 updateMutation.variables?.id === followUp.id;
 
               return (
+                
                 <FollowUpCard
                   key={followUp.id}
                   followUp={followUp}
+                  isSaving={isUpdating}
+                  onSave={(input) => handleEdit(followUp, input)}
                   actions={
                     isPending ? (
-                      <>
-                        <div>
-                          <label
-                            htmlFor={`outcome-${followUp.id}`}
-                            className="mb-2 block text-sm font-medium text-foreground"
-                          >
-                            Record outcome
-                          </label>
-
-                          <select
-                            id={`outcome-${followUp.id}`}
+                      <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-end">
+                        <div className="w-full sm:min-w-48 sm:max-w-56 sm:flex-1">
+                          <Select
+                            label="Record outcome"
                             value={outcomeById[followUp.id] ?? ""}
-                            onChange={(event) =>
+                            onChange={(value) =>
                               setOutcomeById((current) => ({
                                 ...current,
-                                [followUp.id]: event.target.value as
-                                  | FollowUpOutcome
-                                  | "",
+                                [followUp.id]: value as FollowUpOutcome | "",
                               }))
                             }
+                            options={[
+                              { value: "", label: "Select outcome" },
+                              ...FOLLOW_UP_OUTCOMES.map((outcome) => ({
+                                value: outcome,
+                                label: label(outcome),
+                              })),
+                            ]}
                             disabled={isUpdating}
-                            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
-                          >
-                            <option value="">Select outcome</option>
-
-                            {FOLLOW_UP_OUTCOMES.map((outcome) => (
-                              <option key={outcome} value={outcome}>
-                                {label(outcome)}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </div>
 
                         <Button
-                          className="w-full"
+                          className=" shrink-0"
                           leftIcon={Check}
                           onClick={() => void handleComplete(followUp)}
                           disabled={isUpdating}
+                          loading={isUpdating}
+                          loadingText="Saving..."
                         >
-                          {isUpdating ? "Saving…" : "Complete follow-up"}
+                          Complete
                         </Button>
 
                         <Button
-                          className="w-full"
+                          className="h-10 shrink-0"
                           variant="outline"
                           onClick={() => void handleCancel(followUp)}
                           disabled={isUpdating}
                         >
-                          Cancel follow-up
+                          Cancel
                         </Button>
-                      </>
+                      </div>
                     ) : undefined
                   }
                 />
@@ -428,7 +467,9 @@ export function FollowUpsContent() {
           <footer className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {pagination?.total ?? followUps.length} follow-ups total
-              {search.trim() ? ` · ${visibleFollowUps.length} shown` : ""}
+              {search.trim()
+                ? ` · ${visibleFollowUps.length} shown on this page`
+                : ""}
             </p>
 
             <div className="flex items-center gap-3">
@@ -463,15 +504,7 @@ export function FollowUpsContent() {
       <FollowUpFormDialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreated={() => {
-          setShowCreate(false);
-
-          if (page !== 1) {
-            setPage(1);
-          } else {
-            void refetch();
-          }
-        }}
+        onCreated={handleCreated}
       />
     </main>
   );

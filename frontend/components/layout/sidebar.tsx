@@ -45,8 +45,8 @@ const navigationItems: NavigationItem[] = [
 ];
 
 const settingsItem: NavigationItem = {
-  label: "Settings",
-  href: "/settings",
+  label: "Profile",
+  href: "/profile",
   icon: Settings,
 };
 

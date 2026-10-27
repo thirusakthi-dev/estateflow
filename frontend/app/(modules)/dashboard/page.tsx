@@ -10,6 +10,8 @@ export const metadata: Metadata = createMetadata({
   noIndex: true,
 });
 
+export const instant = false;
+
 export default function DashboardPage() {
   return <DashboardContent />;
 }

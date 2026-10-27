@@ -50,6 +50,8 @@ export type Building = {
   name: string;
   description: string | null;
   totalFloors: number | null;
+  minPrice: number | string | null;
+  maxPrice: number | string | null;
   contactName: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
@@ -84,6 +86,8 @@ export type CreateBuildingInput = {
   projectId: string;
   description?: string;
   totalFloors?: number;
+  minPrice?: number | null;
+  maxPrice?: number | null;
   contactName?: string;
   contactPhone?: string;
   contactEmail?: string;
@@ -93,6 +97,8 @@ export type UpdateBuildingInput = {
   name?: string;
   description?: string;
   totalFloors?: number;
+  minPrice?: number | null;
+  maxPrice?: number | null;
   contactName?: string;
   contactPhone?: string;
   contactEmail?: string;

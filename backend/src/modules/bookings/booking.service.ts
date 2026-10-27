@@ -14,6 +14,7 @@ const bookingSelect = {
   leadId: true,
   buildingId: true,
   bookedById: true,
+  agreedPrice: true,
   status: true,
   bookedAt: true,
   cancelledAt: true,
@@ -31,11 +32,15 @@ const bookingSelect = {
     select: {
       id: true,
       name: true,
+      minPrice: true,
+      maxPrice: true,
       project: {
         select: {
           id: true,
           name: true,
           city: true,
+          minPrice: true,
+          maxPrice: true,
         },
       },
     },
@@ -76,6 +81,34 @@ function hasAccessToLead(user: BookingUser, assignedToId: string | null) {
 }
 
 /**
+ * Check whether a building has an active reservation.
+ * Both pending and confirmed bookings reserve the building.
+ */
+async function ensureBuildingAvailable(
+  tx: Prisma.TransactionClient,
+  buildingId: string,
+  excludeBookingId?: string,
+) {
+  const existingBooking = await tx.booking.findFirst({
+    where: {
+      buildingId,
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+      status: {
+        in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+      },
+    },
+    select: { id: true },
+  });
+
+  if (existingBooking) {
+    throw new ApiError(
+      HTTP_STATUS.CONFLICT,
+      "This building already has an active booking.",
+    );
+  }
+}
+
+/**
  * Create a pending booking.
  */
 export async function createBooking(input: unknown, user: BookingUser) {
@@ -89,62 +122,67 @@ export async function createBooking(input: unknown, user: BookingUser) {
     );
   }
 
-  const { leadId, buildingId } = parsed.data;
+  const { leadId, buildingId, agreedPrice } = parsed.data;
 
-  return prisma.$transaction(async (tx) => {
-    const lead = await tx.lead.findUnique({
-      where: { id: leadId },
-      select: {
-        id: true,
-        assignedToId: true,
-        stage: true,
-      },
-    });
+  return prisma.$transaction(
+    async (tx) => {
+      const lead = await tx.lead.findUnique({
+        where: { id: leadId },
+        select: {
+          id: true,
+          assignedToId: true,
+          stage: true,
+        },
+      });
 
-    if (!lead) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Lead not found.");
-    }
+      if (!lead) {
+        throw new ApiError(HTTP_STATUS.NOT_FOUND, "Lead not found.");
+      }
 
-    if (!hasAccessToLead(user, lead.assignedToId)) {
-      throw new ApiError(HTTP_STATUS.FORBIDDEN, "You cannot book this lead.");
-    }
+      if (!hasAccessToLead(user, lead.assignedToId)) {
+        throw new ApiError(HTTP_STATUS.FORBIDDEN, "You cannot book this lead.");
+      }
 
-    if (lead.stage === "LOST") {
-      throw new ApiError(
-        HTTP_STATUS.BAD_REQUEST,
-        "A lost lead cannot be booked.",
-      );
-    }
+      if (lead.stage === "LOST") {
+        throw new ApiError(
+          HTTP_STATUS.BAD_REQUEST,
+          "A lost lead cannot be booked.",
+        );
+      }
 
-    if (lead.stage === "BOOKED") {
-      throw new ApiError(
-        HTTP_STATUS.CONFLICT,
-        "This lead already has a booking.",
-      );
-    }
+      if (lead.stage === "BOOKED") {
+        throw new ApiError(
+          HTTP_STATUS.CONFLICT,
+          "This lead already has a booking.",
+        );
+      }
 
-    const building = await tx.building.findUnique({
-      where: { id: buildingId },
-      select: { id: true },
-    });
+      const building = await tx.building.findUnique({
+        where: { id: buildingId },
+        select: { id: true },
+      });
 
-    if (!building) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Building not found.");
-    }
+      if (!building) {
+        throw new ApiError(HTTP_STATUS.NOT_FOUND, "Building not found.");
+      }
 
-    const booking = await tx.booking.create({
-      data: {
-        leadId,
-        buildingId,
-        bookedById: user.id,
-        status: BookingStatus.PENDING,
-      },
-      select: bookingSelect,
-    });
+      await ensureBuildingAvailable(tx, buildingId);
 
-    // The lead becomes BOOKED only after the booking is confirmed.
-    return booking;
-  });
+      return tx.booking.create({
+        data: {
+          leadId,
+          buildingId,
+          bookedById: user.id,
+          status: BookingStatus.PENDING,
+          ...(agreedPrice !== undefined ? { agreedPrice } : {}),
+        },
+        select: bookingSelect,
+      });
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    },
+  );
 }
 
 /**
@@ -180,17 +218,9 @@ export async function listBookings(user: BookingUser, input: unknown) {
     });
   }
 
-  if (status) {
-    conditions.push({ status });
-  }
-
-  if (leadId) {
-    conditions.push({ leadId });
-  }
-
-  if (buildingId) {
-    conditions.push({ buildingId });
-  }
+  if (status) conditions.push({ status });
+  if (leadId) conditions.push({ leadId });
+  if (buildingId) conditions.push({ buildingId });
 
   if (from || to) {
     conditions.push({
@@ -206,27 +236,18 @@ export async function listBookings(user: BookingUser, input: unknown) {
       OR: [
         {
           lead: {
-            name: {
-              contains: search,
-              mode: "insensitive",
-            },
+            name: { contains: search, mode: "insensitive" },
           },
         },
         {
           building: {
-            name: {
-              contains: search,
-              mode: "insensitive",
-            },
+            name: { contains: search, mode: "insensitive" },
           },
         },
         {
           building: {
             project: {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
+              name: { contains: search, mode: "insensitive" },
             },
           },
         },
@@ -246,7 +267,6 @@ export async function listBookings(user: BookingUser, input: unknown) {
       skip: (page - 1) * limit,
       take: limit,
     }),
-
     prisma.booking.count({ where }),
   ]);
 
@@ -289,7 +309,7 @@ export async function getBookingById(id: string, user: BookingUser) {
  *
  * PENDING   -> CONFIRMED or CANCELLED
  * CONFIRMED -> CANCELLED
- * CANCELLED -> CONFIRMED
+ * CANCELLED -> CONFIRMED, if the building is still available
  */
 export async function updateBookingStatus(
   id: string,
@@ -308,147 +328,145 @@ export async function updateBookingStatus(
 
   const { status } = parsed.data;
 
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.booking.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        leadId: true,
-        bookedById: true,
-        status: true,
-
-        lead: {
-          select: {
-            id: true,
-            stage: true,
-            assignedToId: true,
+  return prisma.$transaction(
+    async (tx) => {
+      const existing = await tx.booking.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          leadId: true,
+          buildingId: true,
+          bookedById: true,
+          status: true,
+          lead: {
+            select: {
+              id: true,
+              stage: true,
+              assignedToId: true,
+            },
           },
         },
-      },
-    });
-
-    if (!existing) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, "Booking not found.");
-    }
-
-    if (!canAccessBooking(user, existing)) {
-      throw new ApiError(
-        HTTP_STATUS.FORBIDDEN,
-        "You cannot update this booking.",
-      );
-    }
-
-    if (existing.status === status) {
-      return tx.booking.findUniqueOrThrow({
-        where: { id },
-        select: bookingSelect,
       });
-    }
 
-    // Cancel a pending or confirmed booking.
-    if (status === BookingStatus.CANCELLED) {
-      if (existing.status === BookingStatus.CANCELLED) {
+      if (!existing) {
+        throw new ApiError(HTTP_STATUS.NOT_FOUND, "Booking not found.");
+      }
+
+      if (!canAccessBooking(user, existing)) {
+        throw new ApiError(
+          HTTP_STATUS.FORBIDDEN,
+          "You cannot update this booking.",
+        );
+      }
+
+      if (existing.status === status) {
         return tx.booking.findUniqueOrThrow({
           where: { id },
           select: bookingSelect,
         });
       }
 
-      const result = await tx.booking.updateMany({
-        where: {
-          id,
-          status: existing.status,
-        },
-        data: {
-          status: BookingStatus.CANCELLED,
-          cancelledAt: new Date(),
-        },
-      });
-
-      if (result.count === 0) {
-        throw new ApiError(
-          HTTP_STATUS.CONFLICT,
-          "Booking status has changed. Refresh and try again.",
-        );
-      }
-
-      // Only a previously confirmed booking should restore the lead.
-      if (existing.status === BookingStatus.CONFIRMED) {
-        await tx.lead.updateMany({
+      if (status === BookingStatus.CANCELLED) {
+        const result = await tx.booking.updateMany({
           where: {
-            id: existing.leadId,
-            stage: "BOOKED",
+            id,
+            status: existing.status,
           },
           data: {
-            stage: "INTERESTED",
+            status: BookingStatus.CANCELLED,
+            cancelledAt: new Date(),
           },
         });
-      }
-    }
 
-    // Confirm a pending or previously cancelled booking.
-    if (status === BookingStatus.CONFIRMED) {
-      const lead = existing.lead;
+        if (result.count === 0) {
+          throw new ApiError(
+            HTTP_STATUS.CONFLICT,
+            "Booking status has changed. Refresh and try again.",
+          );
+        }
 
-      if (lead.stage === "LOST") {
+        if (existing.status === BookingStatus.CONFIRMED) {
+          await tx.lead.updateMany({
+            where: {
+              id: existing.leadId,
+              stage: "BOOKED",
+            },
+            data: { stage: "INTERESTED" },
+          });
+        }
+      } else if (status === BookingStatus.CONFIRMED) {
+        const lead = existing.lead;
+
+        if (lead.stage === "LOST") {
+          throw new ApiError(
+            HTTP_STATUS.BAD_REQUEST,
+            "A lost lead cannot be booked.",
+          );
+        }
+
+        if (lead.stage === "BOOKED") {
+          throw new ApiError(
+            HTTP_STATUS.CONFLICT,
+            "This lead already has an active booking.",
+          );
+        }
+
+        const otherConfirmedBooking = await tx.booking.findFirst({
+          where: {
+            leadId: existing.leadId,
+            id: { not: id },
+            status: BookingStatus.CONFIRMED,
+          },
+          select: { id: true },
+        });
+
+        if (otherConfirmedBooking) {
+          throw new ApiError(
+            HTTP_STATUS.CONFLICT,
+            "This lead already has another confirmed booking.",
+          );
+        }
+
+        await ensureBuildingAvailable(tx, existing.buildingId, existing.id);
+
+        const result = await tx.booking.updateMany({
+          where: {
+            id,
+            status: existing.status,
+          },
+          data: {
+            status: BookingStatus.CONFIRMED,
+            cancelledAt: null,
+          },
+        });
+
+        if (result.count === 0) {
+          throw new ApiError(
+            HTTP_STATUS.CONFLICT,
+            "Booking status has changed. Refresh and try again.",
+          );
+        }
+
+        await tx.lead.update({
+          where: { id: existing.leadId },
+          data: { stage: "BOOKED" },
+        });
+      } else {
         throw new ApiError(
           HTTP_STATUS.BAD_REQUEST,
-          "A lost lead cannot be booked.",
+          "Unsupported booking status transition.",
         );
       }
 
-      if (lead.stage === "BOOKED") {
-        throw new ApiError(
-          HTTP_STATUS.CONFLICT,
-          "This lead already has an active booking.",
-        );
-      }
-
-      const otherConfirmedBooking = await tx.booking.findFirst({
-        where: {
-          leadId: existing.leadId,
-          id: { not: id },
-          status: BookingStatus.CONFIRMED,
-        },
-        select: { id: true },
+      return tx.booking.findUniqueOrThrow({
+        where: { id },
+        select: bookingSelect,
       });
-
-      if (otherConfirmedBooking) {
-        throw new ApiError(
-          HTTP_STATUS.CONFLICT,
-          "This lead already has another confirmed booking.",
-        );
-      }
-
-      const result = await tx.booking.updateMany({
-        where: {
-          id,
-          status: existing.status,
-        },
-        data: {
-          status: BookingStatus.CONFIRMED,
-          cancelledAt: null,
-        },
-      });
-
-      if (result.count === 0) {
-        throw new ApiError(
-          HTTP_STATUS.CONFLICT,
-          "Booking status has changed. Refresh and try again.",
-        );
-      }
-
-      await tx.lead.update({
-        where: { id: existing.leadId },
-        data: { stage: "BOOKED" },
-      });
-    }
-
-    return tx.booking.findUniqueOrThrow({
-      where: { id },
-      select: bookingSelect,
-    });
-  });
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    },
+  );
 }
 
 export async function cancelBooking(id: string, user: BookingUser) {

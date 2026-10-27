@@ -30,10 +30,10 @@ import { SearchFilterToolbar } from "@/components/ui/search-filter-toolbar";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { useToast } from "@/components/ui/toast";
 
-import { BuildingCard } from "./building-card";
 import { BuildingFormDialog } from "./building-form-dialog";
 import { useBuildings, useDeleteBuilding } from "../lib/buildings.queries";
 import type { Building } from "../lib/buildings.types";
+import BuildingCard from "./building-card";
 
 const PAGE_SIZE = 10;
 

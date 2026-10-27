@@ -420,7 +420,7 @@ export function ProjectsList({
       />
 
       {/* Results summary / fetching state */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted">
           {hasActiveFilters ? "Filtered projects" : "All projects"}
           {data && (
@@ -437,7 +437,7 @@ export function ProjectsList({
             Updating projects...
           </span>
         )}
-      </div>
+      </div> */}
 
       {/* Initial load and manual refresh */}
       {showLoading && (
@@ -462,7 +462,7 @@ export function ProjectsList({
       {/* Project results */}
       {!showLoading && !isError && loadedProjects.length > 0 && (
         <div ref={contentRef} className="space-y-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          {/* <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-foreground">
                 Project directory
@@ -475,7 +475,7 @@ export function ProjectsList({
             <p className="text-xs text-muted">
               Showing {loadedProjects.length} of {totalProjects} projects
             </p>
-          </div>
+          </div> */}
 
           <motion.div layout={!reduceMotion} className="space-y-4">
             <AnimatePresence mode="popLayout">
@@ -495,7 +495,7 @@ export function ProjectsList({
                 >
                   <ProjectRow
                     project={project}
-                    onSelect={() => handleSelectProject(project)}
+                    // onSelect={() => handleSelectProject(project)}
                     onEdit={() => handleEditClick(project)}
                     onDelete={() => setDeletingProject(project)}
                   />

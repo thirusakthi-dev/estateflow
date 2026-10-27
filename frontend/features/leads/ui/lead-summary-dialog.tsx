@@ -1,9 +1,17 @@
 "use client";
 
-import { CalendarDays, Mail, Phone, Tag, UserRound, X } from "lucide-react";
+import {
+  CalendarDays,
+  Mail,
+  Phone,
+  Tag,
+  UserRound,
+  ArrowUpRight,
+} from "lucide-react";
 
 import type { Lead, LeadStage } from "../lib/leads.types";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 
 type LeadSummaryDialogProps = {
   lead: Lead;
@@ -12,17 +20,18 @@ type LeadSummaryDialogProps = {
 };
 
 const stageStyles: Record<LeadStage, string> = {
-  NEW: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+  NEW: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
   CONTACTED:
-    "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+    "border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400",
   SITE_VISIT:
-    "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+    "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   INTERESTED:
-    "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+    "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   NEGOTIATION:
-    "bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
-  BOOKED: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
-  LOST: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+    "border-orange-500/20 bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  BOOKED:
+    "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400",
+  LOST: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400",
 };
 
 function InfoItem({
@@ -35,14 +44,14 @@ function InfoItem({
   value?: string | null;
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-3">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface text-muted-foreground">
+    <div className="flex min-w-0 items-start gap-3 rounded-xl border border-border/70 bg-surface/40 p-3.5 transition-colors hover:bg-surface/80">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-background text-muted-foreground">
         <Icon size={17} aria-hidden="true" />
       </div>
 
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="mt-1 break-words text-sm font-medium text-foreground">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="mt-1.5 break-words text-sm font-semibold text-foreground">
           {value || "Not provided"}
         </p>
       </div>
@@ -72,62 +81,74 @@ export function LeadSummaryDialog({
   const stageLabel = lead.stage.replaceAll("_", " ");
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+    <Modal
+      open
+      onClose={onClose}
+      title="Lead details"
+      description="View contact information and lead activity."
+      maxWidth="max-w-2xl"
+      footer={
+        <div className="flex w-full flex-col-reverse gap-2 pt-2 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            variant="outline"
+            className="h-10 w-full px-4 sm:w-auto"
+            onClick={onClose}
+          >
+            Close
+          </Button>
+
+          {onEdit && (
+            <Button
+              className="h-10 w-full px-4 sm:w-auto"
+              leftIcon={ArrowUpRight}
+              onClick={() => {
+                onClose();
+                onEdit(lead);
+              }}
+            >
+              Edit lead
+            </Button>
+          )}
+        </div>
+      }
     >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="lead-summary-title"
-        className="w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-border p-5 sm:p-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg font-semibold text-primary">
-              {lead.name.trim().charAt(0).toUpperCase() || "L"}
-            </div>
-
-            <div className="min-w-0">
-              <h2
-                id="lead-summary-title"
-                className="truncate text-lg font-semibold text-foreground"
-              >
-                {lead.name}
-              </h2>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Lead ID: {lead.id}
-              </p>
-            </div>
+      <div className="space-y-6">
+        {/* Lead profile */}
+        <section className="flex items-center gap-4 rounded-2xl border border-border bg-gradient-to-br from-primary/[0.07] via-background to-background p-4 sm:p-5">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-xl font-bold text-primary ring-1 ring-primary/15">
+            {lead.name.trim().charAt(0).toUpperCase() || "L"}
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close lead summary"
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
-          >
-            <X size={18} />
-          </button>
-        </header>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-base font-semibold text-foreground sm:text-lg">
+              {lead.name}
+            </h3>
 
-        <div className="p-5 sm:p-6">
-          <div className="mb-6">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">
-              Current stage
+            <p className="mt-1 break-all text-xs text-muted-foreground">
+              ID: {lead.id}
             </p>
 
             <span
-              className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ${stageStyles[lead.stage]}`}
+              className={`mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${stageStyles[lead.stage]}`}
             >
+              <span className="size-1.5 rounded-full bg-current" />
               {stageLabel}
             </span>
           </div>
+        </section>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+        {/* Contact information */}
+        <section>
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-foreground">
+              Contact information
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Lead contact details and assignment.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <InfoItem icon={Phone} label="Phone number" value={lead.phone} />
 
             <InfoItem icon={Mail} label="Email address" value={lead.email} />
@@ -139,7 +160,21 @@ export function LeadSummaryDialog({
               label="Assigned employee"
               value={lead.assignedTo?.name}
             />
+          </div>
+        </section>
 
+        {/* Record activity */}
+        <section>
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-foreground">
+              Record activity
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dates associated with this lead.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <InfoItem
               icon={CalendarDays}
               label="Created on"
@@ -152,25 +187,8 @@ export function LeadSummaryDialog({
               value={formatDate(lead.updatedAt)}
             />
           </div>
-        </div>
-
-        <footer className="flex justify-end gap-3 border-t border-border bg-surface/50 p-4 sm:px-6">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-
-          {onEdit && (
-            <Button
-              onClick={() => {
-                onClose();
-                onEdit(lead);
-              }}
-            >
-              Edit lead
-            </Button>
-          )}
-        </footer>
-      </section>
-    </div>
+        </section>
+      </div>
+    </Modal>
   );
 }

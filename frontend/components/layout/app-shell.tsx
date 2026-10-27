@@ -24,8 +24,7 @@ export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // true = floating sidebar; false = full-height sidebar
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -113,7 +112,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="min-h-screen bg-surface text-foreground">
+    <div className="min-h-screen bg-card text-foreground">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-background focus:p-3"
@@ -145,7 +144,7 @@ export function AppShell({ children }: AppShellProps) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto w-full max-w-[1600px] px-4 py-4 outline-none sm:px-6 lg:px-8 lg:py-3"
+          className="mx-auto w-full max-w-[1600px] px-4 py-4 outline-none sm:px-6 lg:px-8 lg:py-6"
         >
           <div ref={contentRef}>{children}</div>
         </main>

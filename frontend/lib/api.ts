@@ -46,3 +46,39 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// Extract readable error messages from API responses.
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong. Please try again.",
+): string {
+  if (axios.isAxiosError(error)) {
+    const responseData = error.response?.data;
+
+    // Prefer the backend's actual error message.
+    if (
+      responseData &&
+      typeof responseData.message === "string" &&
+      responseData.message.trim()
+    ) {
+      return responseData.message;
+    }
+
+    // Handle network and timeout errors.
+    if (error.code === "ECONNABORTED") {
+      return "The request timed out. Please try again.";
+    }
+
+    if (!error.response) {
+      return "Unable to connect to the server. Please try again.";
+    }
+
+    return fallback;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}

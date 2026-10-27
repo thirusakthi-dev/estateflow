@@ -2,42 +2,55 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/toast";
+
 import { getProfile, updateProfile, changePassword } from "./profile.api";
-import type { UpdateProfileInput, ChangePasswordInput } from "./profile.types";
+
+import type {
+  UpdateProfileInput,
+  ChangePasswordInput,
+  Profile,
+} from "./profile.types";
 
 export const profileKeys = {
   me: ["profile", "me"] as const,
 };
 
 function getErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === "object" && error !== null && "response" in error) {
-    const response = error.response;
+  if (typeof error !== "object" || error === null || !("response" in error)) {
+    return fallback;
+  }
 
-    if (
-      typeof response === "object" &&
-      response !== null &&
-      "data" in response
-    ) {
-      const data = response.data;
+  const response = error.response;
 
-      if (
-        typeof data === "object" &&
-        data !== null &&
-        "message" in data &&
-        typeof data.message === "string"
-      ) {
-        return data.message;
-      }
-    }
+  if (
+    typeof response !== "object" ||
+    response === null ||
+    !("data" in response)
+  ) {
+    return fallback;
+  }
+
+  const data = response.data;
+
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "message" in data &&
+    typeof data.message === "string"
+  ) {
+    return data.message;
   }
 
   return fallback;
 }
 
 export function useProfile() {
-  return useQuery({
+  return useQuery<Profile>({
     queryKey: profileKeys.me,
-    queryFn: getProfile,
+    queryFn: async () => {
+      const response = await getProfile();
+      return response.user;
+    },
   });
 }
 
@@ -48,8 +61,14 @@ export function useUpdateProfile() {
   return useMutation({
     mutationFn: (input: UpdateProfileInput) => updateProfile(input),
 
-    onSuccess: (result) => {
-      queryClient.setQueryData(profileKeys.me, result);
+    onSuccess: async (result) => {
+      // Cache the Profile object, not the { user: Profile } wrapper.
+      queryClient.setQueryData<Profile>(profileKeys.me, result.user);
+
+      // Confirm the latest saved values from the backend.
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.me,
+      });
 
       toast.success({
         title: "Profile updated",

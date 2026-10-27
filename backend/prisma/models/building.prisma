@@ -7,14 +7,17 @@ model Building {
   contactName  String?
   contactPhone String?
   contactEmail String?
+
+  minPrice     Decimal? @db.Decimal(14, 2)
+  maxPrice     Decimal? @db.Decimal(14, 2)
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   bookings Booking[]
-
-  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  units   PropertyUnit[]
-  images  BuildingImage[]
+  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  units    PropertyUnit[]
+  images   BuildingImage[]
 
   @@unique([projectId, name])
 }
