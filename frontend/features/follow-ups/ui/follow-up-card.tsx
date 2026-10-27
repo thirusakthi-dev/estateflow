@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 
 import {
@@ -111,9 +112,12 @@ export function FollowUpCard({
     followUp.outcome,
   ]);
 
+  const scheduledTimestamp = new Date(followUp.scheduledAt).getTime();
+
   const isOverdue =
     followUp.status === "PENDING" &&
-    new Date(followUp.scheduledAt).getTime() < Date.now();
+    Number.isFinite(scheduledTimestamp) &&
+    scheduledTimestamp < Date.now();
 
   function startEditing() {
     setScheduledAt(toLocalDateTime(followUp.scheduledAt));
@@ -134,7 +138,7 @@ export function FollowUpCard({
   }
 
   async function handleSave() {
-    if (!onSave) return;
+    if (!onSave || isSaving) return;
 
     const nextErrors: Record<string, string> = {};
 
@@ -179,7 +183,7 @@ export function FollowUpCard({
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary">
-            <CalendarClock className="size-5" />
+            <CalendarClock className="size-5" aria-hidden="true" />
           </div>
 
           <div className="min-w-0">
@@ -188,7 +192,7 @@ export function FollowUpCard({
             </h3>
 
             <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Phone className="size-3.5 shrink-0" />
+              <Phone className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">
                 {followUp.lead?.phone ?? "No phone number"}
               </span>
@@ -216,7 +220,10 @@ export function FollowUpCard({
       {/* Details */}
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="flex min-w-0 items-start gap-3 rounded-xl bg-muted/40 p-3">
-          <Clock3 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <Clock3
+            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
 
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">Scheduled for</p>
@@ -227,7 +234,10 @@ export function FollowUpCard({
         </div>
 
         <div className="flex min-w-0 items-start gap-3 rounded-xl bg-muted/40 p-3">
-          <UserRound className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <UserRound
+            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
 
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">Assigned to</p>
@@ -257,7 +267,13 @@ export function FollowUpCard({
               <Select
                 label="Status"
                 value={status}
-                onChange={(value) => setStatus(value as FollowUpStatus)}
+                onChange={(value) => {
+                  setStatus(value as FollowUpStatus);
+                  setErrors((previous) => ({
+                    ...previous,
+                    outcome: "",
+                  }));
+                }}
                 options={FOLLOW_UP_STATUSES.map((item) => ({
                   value: item,
                   label: label(item),
@@ -270,7 +286,13 @@ export function FollowUpCard({
             <Select
               label="Outcome"
               value={outcome}
-              onChange={(value) => setOutcome(value as FollowUpOutcome | "")}
+              onChange={(value) => {
+                setOutcome(value as FollowUpOutcome | "");
+                setErrors((previous) => ({
+                  ...previous,
+                  outcome: "",
+                }));
+              }}
               options={[
                 { value: "", label: "Select outcome" },
                 ...FOLLOW_UP_OUTCOMES.map((item) => ({
@@ -281,29 +303,21 @@ export function FollowUpCard({
             />
 
             {errors.outcome && (
-              <p className="mt-1.5 text-xs text-destructive">
+              <p className="mt-1.5 text-xs text-destructive" role="alert">
                 {errors.outcome}
               </p>
             )}
           </div>
 
-          <div>
-            <label
-              htmlFor={`follow-up-notes-${followUp.id}`}
-              className="mb-1.5 block text-sm font-medium"
-            >
-              Notes
-            </label>
-
-            <textarea
-              id={`follow-up-notes-${followUp.id}`}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              rows={3}
-              placeholder="Add follow-up notes..."
-              className="w-full resize-y rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
+          <Textarea
+            id={`follow-up-notes-${followUp.id}`}
+            label="Notes"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={3}
+            placeholder="Add follow-up notes..."
+            containerClassName="min-w-0"
+          />
 
           <div className="flex flex-wrap justify-end gap-2">
             <Button
@@ -343,7 +357,10 @@ export function FollowUpCard({
 
             {followUp.notes && (
               <div className="flex items-start gap-2">
-                <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <FileText
+                  className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
 
                 <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">
                   {followUp.notes}
@@ -354,21 +371,19 @@ export function FollowUpCard({
 
           {/* Actions */}
           <div className="mt-5 flex min-w-0 flex-col gap-3 border-t border-border pt-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 max-w-full items-center gap-2 overflow-x-auto  lg:justify-end">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
               {actions}
 
               {onSave && (
-                <div className="pt-6">
-                  <Button
-                    variant="outline"
-                    className="shrink-0 whitespace-nowrap"
-                    leftIcon={Pencil}
-                    onClick={startEditing}
-                    disabled={isSaving}
-                  >
-                    Edit details
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  className="shrink-0 whitespace-nowrap"
+                  leftIcon={Pencil}
+                  onClick={startEditing}
+                  disabled={isSaving}
+                >
+                  Edit details
+                </Button>
               )}
             </div>
           </div>
