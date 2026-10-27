@@ -10,7 +10,6 @@ import {
   ChevronRight,
   FolderKanban,
   LayoutDashboard,
-  PanelLeftClose,
   PanelLeftOpen,
   Settings,
   Users,
@@ -20,6 +19,8 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { AppLogo } from "@/components/ui/brand/app-logo";
+import { useCurrentUser } from "@/features/auth/auth.queries";
+import { isAdmin } from "@/lib/permissions";
 
 type SidebarProps = {
   open: boolean;
@@ -51,10 +52,12 @@ const settingsItem: NavigationItem = {
 };
 
 const activeLinkClasses =
-  "bg-[#0f172a] text-white shadow-sm dark:bg-[#e2e8f0] dark:text-[#0f172a]";
+  "bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900";
 
 const inactiveLinkClasses =
-  "text-muted-foreground hover:bg-slate-100 hover:text-foreground dark:hover:bg-white/[0.07] dark:hover:text-foreground";
+  "text-muted-foreground hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-slate-800 dark:hover:text-white";
+
+const easing = [0.22, 1, 0.36, 1] as const;
 
 export function Sidebar({
   open,
@@ -64,6 +67,13 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion();
+
+  const { data: user } = useCurrentUser();
+  const admin = isAdmin(user?.role);
+
+  const visibleNavigationItems = navigationItems.filter(
+    (item) => item.href !== "/users" || admin,
+  );
 
   const [hovered, setHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -90,6 +100,7 @@ export function Sidebar({
 
     closeTimer.current = setTimeout(() => {
       setHovered(false);
+      closeTimer.current = null;
     }, 180);
   }, [cancelCloseTimer]);
 
@@ -119,25 +130,25 @@ export function Sidebar({
 
     document.addEventListener("keydown", handleKeyDown);
 
-    const focusTimer = setTimeout(() => {
-      mobileCloseButtonRef.current?.focus();
-    }, 50);
+    const focusTimer = window.setTimeout(
+      () => {
+        mobileCloseButtonRef.current?.focus();
+      },
+      reduceMotion ? 0 : 100,
+    );
 
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
       clearTimeout(focusTimer);
     };
-  }, [open, onClose]);
+  }, [open, onClose, reduceMotion]);
 
-  // Pin the floating sidebar as the full-height sidebar.
   const expandAndPinSidebar = useCallback(() => {
     cancelCloseTimer();
     setHovered(false);
 
-    if (collapsed) {
-      onToggleSidebar();
-    }
+    if (collapsed) onToggleSidebar();
   }, [cancelCloseTimer, collapsed, onToggleSidebar]);
 
   const closeFloatingPreview = useCallback(() => {
@@ -174,16 +185,20 @@ export function Sidebar({
         <Icon
           size={19}
           strokeWidth={active ? 2.2 : 1.8}
+          aria-hidden="true"
           className="shrink-0 transition-transform duration-200 group-hover:scale-110"
         />
 
         <AnimatePresence initial={false}>
           {expanded && (
             <motion.span
-              initial={reduceMotion ? false : { opacity: 0, x: -6 }}
+              initial={reduceMotion ? false : { opacity: 0, x: -5 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, x: -6 }}
-              transition={{ duration: reduceMotion ? 0 : 0.16 }}
+              exit={reduceMotion ? undefined : { opacity: 0, x: -5 }}
+              transition={{
+                duration: reduceMotion ? 0 : 0.2,
+                ease: "easeOut",
+              }}
               className="min-w-0 flex-1 truncate whitespace-nowrap"
             >
               {item.label}
@@ -194,6 +209,7 @@ export function Sidebar({
         {expanded && (
           <ChevronRight
             size={15}
+            aria-hidden="true"
             className={[
               "shrink-0 transition-all duration-200",
               "opacity-0 group-hover:translate-x-0.5 group-hover:opacity-70",
@@ -205,11 +221,7 @@ export function Sidebar({
     );
   };
 
-  const renderSidebarContent = (
-    expanded: boolean,
-    mobile = false,
-    floating = false,
-  ) => (
+  const renderSidebarContent = (expanded: boolean, mobile = false) => (
     <div className="flex h-full min-h-0 flex-col">
       {/* Brand header */}
       <div
@@ -224,9 +236,7 @@ export function Sidebar({
           aria-label="EstateFlow dashboard"
           className="flex min-w-0 items-center gap-2 overflow-hidden rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center">
-            <AppLogo />
-          </span>
+          <AppLogo iconSize={23} iconClassName="size-9 rounded-xl" />
 
           <AnimatePresence initial={false}>
             {expanded && (
@@ -234,7 +244,10 @@ export function Sidebar({
                 initial={reduceMotion ? false : { opacity: 0, x: -5 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={reduceMotion ? undefined : { opacity: 0, x: -5 }}
-                transition={{ duration: reduceMotion ? 0 : 0.16 }}
+                transition={{
+                  duration: reduceMotion ? 0 : 0.2,
+                  ease: "easeOut",
+                }}
                 className="truncate text-sm font-semibold tracking-tight text-foreground"
               >
                 EstateFlow
@@ -243,19 +256,17 @@ export function Sidebar({
           </AnimatePresence>
         </Link>
 
-        {/* Only floating preview and mobile drawer have header controls. */}
-        {/* {expanded && (floating || mobile) && (
+        {mobile && (
           <button
-            ref={mobile ? mobileCloseButtonRef : undefined}
+            ref={mobileCloseButtonRef}
             type="button"
-            onClick={mobile ? onClose : closeFloatingPreview}
-            aria-label={mobile ? "Close sidebar" : "Collapse floating preview"}
-            title={mobile ? "Close sidebar" : "Collapse preview"}
-            className="ml-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            onClick={onClose}
+            aria-label="Close navigation"
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            {mobile ? <X size={17} /> : <PanelLeftClose size={17} />}
+            <X size={19} aria-hidden="true" />
           </button>
-        )} */}
+        )}
       </div>
 
       {/* Navigation */}
@@ -263,12 +274,12 @@ export function Sidebar({
         aria-label="Main navigation"
         className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-2 py-3"
       >
-        {navigationItems.map((item) =>
+        {visibleNavigationItems.map((item) =>
           renderNavigationLink(item, expanded, mobile),
         )}
       </nav>
 
-      {/* Settings */}
+      {/* Profile */}
       <div className="shrink-0 border-t border-border/70 px-2 py-3">
         {renderNavigationLink(settingsItem, expanded, mobile)}
       </div>
@@ -277,7 +288,7 @@ export function Sidebar({
 
   return (
     <>
-      {/* Hover detection area when the sidebar is collapsed */}
+      {/* Hover detection area for collapsed desktop sidebar */}
       {collapsed && !open && (
         <div
           aria-hidden="true"
@@ -286,58 +297,88 @@ export function Sidebar({
         />
       )}
 
-      {/* Full-height desktop sidebar: intentionally no toggle button */}
-      {!collapsed && (
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-border bg-background lg:block">
-          {renderSidebarContent(true)}
-        </aside>
-      )}
+      {/* Expanded desktop sidebar */}
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.aside
+            initial={reduceMotion ? false : { width: 0, opacity: 0 }}
+            animate={{ width: 256, opacity: 1 }}
+            exit={{
+              width: 0,
+              opacity: 0,
+              transition: {
+                duration: reduceMotion ? 0 : 0.28,
+                ease: easing,
+              },
+            }}
+            transition={{
+              width: {
+                duration: reduceMotion ? 0 : 0.34,
+                ease: easing,
+              },
+              opacity: {
+                duration: reduceMotion ? 0 : 0.22,
+                ease: "easeOut",
+              },
+            }}
+            className="fixed inset-y-0 left-0 z-40 hidden overflow-hidden border-r border-border bg-background lg:block"
+            style={{
+              willChange: reduceMotion ? "auto" : "width, opacity",
+            }}
+          >
+            <div className="h-full w-64">{renderSidebarContent(true)}</div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
 
-      {/* Floating desktop sidebar */}
-      <AnimatePresence>
+      {/* Floating preview when desktop sidebar is collapsed */}
+      <AnimatePresence initial={false}>
         {collapsed && hovered && !open && (
           <motion.aside
-            initial={reduceMotion ? false : { opacity: 0, x: -10, scale: 0.98 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
+            initial={reduceMotion ? false : { opacity: 0, x: -12, scale: 0.97 }}
+            animate={{
+              opacity: 1,
+              x: 0,
+              scale: 1,
+              width: floatingExpanded ? 240 : 68,
+            }}
             exit={reduceMotion ? undefined : { opacity: 0, x: -8, scale: 0.98 }}
             transition={{
-              duration: reduceMotion ? 0 : 0.18,
-              ease: "easeOut",
+              duration: reduceMotion ? 0 : 0.22,
+              ease: easing,
             }}
             onMouseEnter={showFloatingSidebar}
             onMouseLeave={hideFloatingSidebar}
             className={[
               "fixed left-3 top-1/2 z-50 hidden -translate-y-1/2",
               "h-[min(65vh,560px)] min-h-[300px]",
-              "max-h-[calc(100dvh-32px)] overflow-visible",
+              "max-h-[calc(100dvh-32px)] overflow-hidden",
               "rounded-2xl border border-border/80",
               "bg-background/95 shadow-xl shadow-black/[0.10]",
               "backdrop-blur-xl lg:block",
             ].join(" ")}
             style={{
-              width: floatingExpanded ? 240 : 68,
-              transition: reduceMotion ? "none" : "width 180ms ease",
+              willChange: reduceMotion ? "auto" : "width, transform, opacity",
             }}
           >
-            {/* Always visible: stays clickable while the panel is hovered. */}
             <button
               type="button"
               onClick={expandAndPinSidebar}
               aria-label="Expand to full-height sidebar"
               title="Expand sidebar"
-              className="absolute -right-2 -top-2 z-30 flex size-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="absolute -right-2 -top-2 z-30 flex size-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800 dark:hover:text-white"
             >
-              <PanelLeftOpen size={15} />
+              <PanelLeftOpen size={15} aria-hidden="true" />
             </button>
 
-            {renderSidebarContent(floatingExpanded, false, true)}
+            {renderSidebarContent(floatingExpanded)}
           </motion.aside>
         )}
       </AnimatePresence>
 
       {/* Mobile drawer */}
       {mounted && (
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {open && (
             <>
               <motion.button
@@ -346,19 +387,28 @@ export function Sidebar({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{
+                  duration: reduceMotion ? 0 : 0.24,
+                  ease: "easeOut",
+                }}
                 onClick={onClose}
-                className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-[2px] lg:hidden"
+                className="fixed inset-0 z-[70] cursor-default bg-black/45 backdrop-blur-[2px] lg:hidden"
               />
 
               <motion.aside
-                initial={reduceMotion ? false : { x: "-100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "-100%" }}
+                initial={reduceMotion ? false : { x: "-100%", opacity: 0.85 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={
+                  reduceMotion ? { opacity: 0 } : { x: "-100%", opacity: 0.9 }
+                }
                 transition={{
-                  duration: reduceMotion ? 0 : 0.22,
-                  ease: "easeOut",
+                  duration: reduceMotion ? 0 : 0.32,
+                  ease: easing,
                 }}
                 className="fixed inset-y-0 left-0 z-[80] w-[280px] max-w-[85vw] border-r border-border bg-background shadow-2xl lg:hidden"
+                style={{
+                  willChange: reduceMotion ? "auto" : "transform",
+                }}
               >
                 {renderSidebarContent(true, true)}
               </motion.aside>

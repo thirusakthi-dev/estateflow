@@ -22,16 +22,14 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // true = floating sidebar; false = full-height sidebar
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   const pathname = usePathname();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const contentRef = useRef<HTMLDivElement>(null);
 
   const { data: user, isPending, isError } = useCurrentUser();
-
   const showLoading = useMinimumLoading(isPending, 1000);
 
   const closeSidebar = useCallback(() => {
@@ -74,20 +72,22 @@ export function AppShell({ children }: AppShellProps) {
     return () => context.revert();
   }, [pathname, reduceMotion, showLoading, user]);
 
-  // Redirect when authentication fails.
+  // Redirect unauthenticated users to the login page.
   useLayoutEffect(() => {
     if (!isPending && (isError || !user)) {
       router.replace("/login");
     }
   }, [isPending, isError, user, router]);
 
-  // Lock background scrolling while the mobile sidebar is open.
+  // Prevent background scrolling only while the mobile sidebar is open.
   useLayoutEffect(() => {
     if (!sidebarOpen) return;
 
-    const previousOverflow = document.body.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
 
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -98,10 +98,16 @@ export function AppShell({ children }: AppShellProps) {
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [sidebarOpen, closeSidebar]);
+
+  // Close the mobile sidebar after navigating to another page.
+  useLayoutEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   if (showLoading) {
     return <AppLoader message="Loading your workspace" fullScreen />;
@@ -112,7 +118,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="min-h-screen bg-card text-foreground">
+    <div className="min-h-dvh overflow-x-clip bg-card text-foreground">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-background focus:p-3"
@@ -131,7 +137,7 @@ export function AppShell({ children }: AppShellProps) {
         className={[
           "min-w-0",
           reduceMotion ? "" : "transition-[margin] duration-300 ease-in-out",
-          sidebarCollapsed ? "md:ml-0" : "md:ml-64",
+          sidebarCollapsed ? "md:ml-20" : "md:ml-64",
         ].join(" ")}
       >
         <Topbar

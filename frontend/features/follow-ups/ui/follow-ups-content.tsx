@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AppLoader } from "@/components/ui/app-loader";
 import { StatsCard } from "@/components/ui/stats-card";
 import { SearchFilterToolbar } from "@/components/ui/search-filter-toolbar";
 import { useToast } from "@/components/ui/toast";
@@ -193,9 +194,7 @@ export function FollowUpsContent() {
     try {
       await updateMutation.mutateAsync({
         id: followUp.id,
-        input: {
-          status: "CANCELLED",
-        },
+        input: { status: "CANCELLED" },
       });
 
       setOutcomeById((current) => {
@@ -228,7 +227,6 @@ export function FollowUpsContent() {
         description: "Your changes have been saved.",
       });
     } catch (error) {
-      // The card displays this error inside its edit form.
       throw new Error(errorMessage(error, "Unable to update follow-up."));
     }
   }
@@ -270,13 +268,13 @@ export function FollowUpsContent() {
   }
 
   return (
-    <main className="w-full min-w-0 space-y-6">
+    <section className="w-full min-w-0 space-y-5 sm:space-y-6">
       <PageHeader
         title="Follow-ups"
         description="Schedule customer callbacks, track conversations, and record outcomes."
         icon={CalendarClock}
         actions={
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <Button
               variant="outline"
               size="icon"
@@ -292,7 +290,7 @@ export function FollowUpsContent() {
             <Button
               leftIcon={Plus}
               onClick={() => setShowCreate(true)}
-              className="w-full whitespace-nowrap sm:w-auto"
+              className="min-w-0 flex-1 whitespace-nowrap sm:flex-none"
             >
               Schedule follow-up
             </Button>
@@ -301,7 +299,7 @@ export function FollowUpsContent() {
       />
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         {stats.map((stat, index) => (
           <StatsCard
             key={stat.title}
@@ -343,7 +341,7 @@ export function FollowUpsContent() {
       {isError ? (
         <section
           role="alert"
-          className="rounded-2xl border border-rose-200 bg-background p-8 text-center dark:border-rose-900/50"
+          className="rounded-2xl border border-rose-200 bg-background p-6 text-center sm:p-8 dark:border-rose-900/50"
         >
           <ServerCrash className="mx-auto size-10 text-rose-600" />
 
@@ -366,13 +364,7 @@ export function FollowUpsContent() {
           </Button>
         </section>
       ) : isLoading ? (
-        <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-background">
-          <Spinner size="lg" label="Loading follow-ups" />
-
-          <p className="text-sm text-muted-foreground">
-            Loading follow-up records…
-          </p>
-        </div>
+        <AppLoader message="Loading follow-ups" />
       ) : visibleFollowUps.length === 0 ? (
         <EmptyState
           title={hasFilters ? "No matching follow-ups" : "No follow-ups found"}
@@ -397,7 +389,7 @@ export function FollowUpsContent() {
             </div>
           )}
 
-         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {visibleFollowUps.map((followUp) => {
               const isPending = followUp.status === "PENDING";
 
@@ -406,7 +398,6 @@ export function FollowUpsContent() {
                 updateMutation.variables?.id === followUp.id;
 
               return (
-                
                 <FollowUpCard
                   key={followUp.id}
                   followUp={followUp}
@@ -436,25 +427,27 @@ export function FollowUpsContent() {
                           />
                         </div>
 
-                        <Button
-                          className=" shrink-0"
-                          leftIcon={Check}
-                          onClick={() => void handleComplete(followUp)}
-                          disabled={isUpdating}
-                          loading={isUpdating}
-                          loadingText="Saving..."
-                        >
-                          Complete
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            className="min-w-0 flex-1 shrink-0 sm:flex-none"
+                            leftIcon={Check}
+                            onClick={() => void handleComplete(followUp)}
+                            disabled={isUpdating}
+                            loading={isUpdating}
+                            loadingText="Saving..."
+                          >
+                            Complete
+                          </Button>
 
-                        <Button
-                          className="h-10 shrink-0"
-                          variant="outline"
-                          onClick={() => void handleCancel(followUp)}
-                          disabled={isUpdating}
-                        >
-                          Cancel
-                        </Button>
+                          <Button
+                            className="shrink-0"
+                            variant="outline"
+                            onClick={() => void handleCancel(followUp)}
+                            disabled={isUpdating}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
                     ) : undefined
                   }
@@ -464,7 +457,7 @@ export function FollowUpsContent() {
           </div>
 
           {/* Pagination */}
-          <footer className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <footer className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {pagination?.total ?? followUps.length} follow-ups total
               {search.trim()
@@ -472,7 +465,7 @@ export function FollowUpsContent() {
                 : ""}
             </p>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-2 sm:justify-end sm:gap-3">
               <Button
                 variant="outline"
                 disabled={page <= 1 || isFetching}
@@ -481,7 +474,7 @@ export function FollowUpsContent() {
                 Previous
               </Button>
 
-              <span className="text-sm text-muted-foreground">
+              <span className="whitespace-nowrap text-sm text-muted-foreground">
                 Page {page} of {pagination?.totalPages ?? 1}
               </span>
 
@@ -506,6 +499,6 @@ export function FollowUpsContent() {
         onClose={() => setShowCreate(false)}
         onCreated={handleCreated}
       />
-    </main>
+    </section>
   );
 }

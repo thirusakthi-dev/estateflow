@@ -42,21 +42,31 @@ export function Topbar({
     logout();
   };
 
+  const closeProfile = () => setProfileOpen(false);
+
   return (
     <>
-      <header className="sticky top-0 z-40 flex h-19 items-center justify-between border-b border-border bg-background/95 px-4 text-foreground backdrop-blur sm:px-6">
+      <header className="sticky top-0 z-40 flex h-19 items-center justify-between border-b border-border bg-background/95 px-3 text-foreground backdrop-blur sm:px-6">
         {/* Left side */}
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* Mobile menu */}
           <button
             type="button"
             aria-label="Open navigation menu"
             title="Open navigation menu"
             onClick={onMenuClick}
-            className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-slate-800 dark:hover:text-white md:hidden"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-slate-800 dark:hover:text-white md:hidden"
           >
-            <Menu size={20} aria-hidden="true" />
+            <Menu size={21} aria-hidden="true" />
           </button>
+
+          {/* Mobile brand */}
+          <div className="flex min-w-0 items-center gap-2 md:hidden">
+            <AppLogo iconSize={19} iconClassName="size-9 rounded-xl" />
+            <span className="truncate text-base font-semibold tracking-tight text-foreground">
+              EstateFlow
+            </span>
+          </div>
 
           {/* Desktop sidebar toggle */}
           <button
@@ -74,9 +84,9 @@ export function Topbar({
             )}
           </button>
 
-          {/* Brand when sidebar is collapsed */}
+          {/* Desktop brand: only when sidebar is collapsed */}
           {sidebarCollapsed && (
-            <div className="flex min-w-0 shrink-0 items-center gap-3">
+            <div className="hidden min-w-0 shrink-0 items-center gap-3 md:flex">
               <AppLogo iconSize={20} iconClassName="size-9 rounded-xl" />
               <span className="truncate text-base font-semibold tracking-tight text-foreground">
                 EstateFlow
@@ -94,14 +104,14 @@ export function Topbar({
         </div>
 
         {/* Right side */}
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <ThemeToggle />
 
-          {/* Profile dropdown: opens on hover, closes on mouse leave */}
+          {/* Profile dropdown */}
           <div
             className="relative"
             onMouseEnter={() => setProfileOpen(true)}
-            onMouseLeave={() => setProfileOpen(false)}
+            onMouseLeave={closeProfile}
           >
             <button
               type="button"
@@ -147,7 +157,6 @@ export function Topbar({
                 aria-label="Profile options"
                 className="absolute right-0 top-full z-50 w-60 rounded-xl border border-slate-200 bg-white p-1.5 text-slate-900 shadow-xl shadow-black/5 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:shadow-black/30"
               >
-                {/* User details */}
                 <div className="border-b border-slate-200 px-3 py-3 dark:border-slate-700">
                   <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">
                     {user.name}
@@ -157,12 +166,11 @@ export function Topbar({
                   </p>
                 </div>
 
-                {/* Profile */}
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    setProfileOpen(false);
+                    closeProfile();
                     router.push("/profile");
                   }}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-800 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-white"
@@ -175,12 +183,11 @@ export function Topbar({
                   Profile
                 </button>
 
-                {/* Log out */}
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    setProfileOpen(false);
+                    closeProfile();
                     setLogoutConfirmOpen(true);
                   }}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"

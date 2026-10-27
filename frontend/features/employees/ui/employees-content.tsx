@@ -163,13 +163,13 @@ export function EmployeesContent() {
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <Button
             variant="outline"
+            size="icon"
             onClick={() => void handleRefresh()}
-            disabled={isFetching || isRefreshing}
-            leftIcon={RefreshCw}
+            disabled={isRefreshing || isFetching}
+            aria-label="Refresh bookings"
           >
-            Refresh
+            <RefreshCw className="size-4" />
           </Button>
-
           <Button onClick={openCreateDialog} leftIcon={Plus}>
             Add employee
           </Button>

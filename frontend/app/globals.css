@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   color-scheme: light;
 
@@ -46,8 +48,6 @@
   --selection-foreground: #f1f5f9;
 }
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -65,24 +65,40 @@
 }
 
 /* Base styles */
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
   min-height: 100%;
+  overflow-x: clip;
+  overflow-y: auto;
   scroll-behavior: smooth;
   background: var(--background);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  min-height: 100vh;
+  min-height: 100%;
   margin: 0;
+  overflow-x: clip;
+  overflow-y: auto;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-poppins), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Keep media and embedded content within the viewport */
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
 }
 
 /* Form controls */
@@ -97,23 +113,21 @@ button {
   cursor: pointer;
 }
 
-/* Smooth theme transitions */
-body,
-main,
-aside,
-header,
-nav,
-section,
-article,
-div,
-button,
-input,
-textarea,
-select {
-  transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease;
+/* Explicit theme color transitions only */
+.theme-transition {
+  transition-property: background-color, border-color, color;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
+}
+
+/* Sidebar animation hints
+   Motion controls transform, width, opacity, and timing. */
+.sidebar-panel {
+  will-change: transform, opacity;
+}
+
+.sidebar-backdrop {
+  will-change: opacity;
 }
 
 /* Text selection */
@@ -180,5 +194,10 @@ select:-webkit-autofill {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .sidebar-panel,
+  .sidebar-backdrop {
+    will-change: auto;
   }
 }
