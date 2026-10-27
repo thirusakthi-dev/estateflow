@@ -1,232 +1,181 @@
-# EstateFlow
+# EstateFlow — Real Estate CRM
 
-A modern real estate management platform for managing projects, buildings, units, leads, bookings, and sales operations through a centralized dashboard.
+**EstateFlow** is a full-stack real estate CRM built to streamline lead management, sales follow-ups, bookings, projects, and buildings through a secure, role-based workspace.
 
-## Overview
+**Live Demo:** https://estateflow-poc.vercel.app/
 
-EstateFlow helps real estate teams organize property inventory, track potential customers, manage bookings, and monitor business activity in one place.
+## About the Project
 
-### Key Features
+EstateFlow is designed with a focus on security, reusable code, maintainability, and organized application architecture. It combines a modern Next.js frontend with a modular Express.js REST API and PostgreSQL database.
 
-- **Dashboard** — Overview of real estate operations and key statistics.
-- **Project Management** — Manage real estate projects and their details.
-- **Building Management** — Organize buildings under individual projects.
-- **Unit Management** — Track units, types, availability, and status.
-- **Lead Management** — Manage potential customers and track their sales stages.
-- **Booking Management** — Maintain booking records and booking statuses.
-- **Authentication** — JWT-based authentication for protected API endpoints.
-- **Database Seeding** — Populate the database with demonstration data.
-- **Responsive UI** — Interface designed for desktop, tablet, and mobile screens.
+The project uses a reusable backend scaffold with shared middleware, centralized error handling, validation patterns, and consistent API conventions. Its modular structure makes the codebase easier to maintain and extend without unnecessary duplication.
+
+## Key Features
+
+- **Dashboard:** View CRM activity and key business metrics.
+- **Lead Management:** Manage leads, track pipeline stages, and assign leads to sales employees.
+- **Follow-up Management:** Track scheduled follow-ups, outcomes, and pending actions.
+- **Booking Management:** Manage real-estate booking records.
+- **Project Management:** Organize real-estate projects and related information.
+- **Building Management:** Maintain building records associated with projects.
+- **Employee Management:** Allow administrators to manage sales employees.
+- **Role-Based Access Control:** Separate permissions for administrators and sales employees.
+- **Secure Authentication:** Protect CRM routes and API endpoints.
+- **Image Management:** Use Cloudinary for hosted image storage and delivery.
+- **API Documentation:** Document and explore REST API endpoints with Swagger.
+- **SEO Optimization:** Apply appropriate metadata and page-level SEO practices using Next.js.
+- **Responsive UI:** Deliver a consistent interface across desktop and mobile devices.
+- **Dark and Light Themes:** Support different viewing preferences.
 
 ## Technology Stack
 
 ### Frontend
-
-- Next.js (App Router)
+- Next.js App Router
 - React
 - TypeScript
 - Tailwind CSS
 - TanStack Query
-- Axios
+- Motion for React
 - Lucide React
-- Framer Motion
-- Recharts
 
 ### Backend
-
 - Node.js
 - Express.js
 - TypeScript
 - Prisma ORM
 - PostgreSQL
 - JWT authentication
-- bcryptjs
-- Helmet
-- CORS
+- REST APIs
 - Swagger / OpenAPI
 
-### Database and Deployment
+### Security
+- **Helmet** for security-related HTTP headers
+- **CORS** for cross-origin access configuration
+- Authentication and role-based authorization middleware
+- Request validation
+- Centralized error handling
+- Rate limiting where configured
 
-- **Database:** Neon PostgreSQL
-- **Backend hosting:** Render
-- **Frontend hosting:** Vercel
-- **Version control:** Git and GitHub
+### Media and Deployment
+- **Cloudinary** — Cloud-hosted image storage and delivery
+- **Vercel** — Frontend deployment
+- **Render** — Backend API deployment
+- **Neon** — Serverless PostgreSQL database
 
-## Project Structure
+## Architecture and Engineering Practices
 
-```text
-EstateFlow/
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   ├── package.json
-│   └── package-lock.json
-├── backend/
-│   ├── prisma/
-│   │   ├── migrations/
-│   │   ├── schema.prisma
-│   │   └── seed.ts
-│   ├── src/
-│   ├── package.json
-│   └── package-lock.json
-├── .gitignore
-└── README.md
-```
+EstateFlow follows a modular architecture with clear separation between frontend presentation, API routing, business logic, and database access.
 
-## Prerequisites
+- **Reusable components:** Shared UI elements and backend utilities reduce duplicated code.
+- **Organized structure:** Feature-based modules and clear responsibilities improve maintainability.
+- **Reusable backend scaffold:** Common middleware, validation, error handling, and HTTP conventions establish consistent patterns.
+- **Type safety:** TypeScript helps catch errors during development.
+- **Database management:** Prisma provides a structured interface to PostgreSQL.
+- **API documentation:** Swagger provides an interactive interface for exploring documented API endpoints.
+- **SEO-friendly rendering:** Next.js supports page metadata and rendering strategies suited to search-engine discoverability.
+- **Cloud image handling:** Cloudinary separates image hosting from application-server storage.
 
-Install the following before running the project:
+## User Roles
 
-- Node.js and npm
-- PostgreSQL database or a Neon PostgreSQL database
-- Git
+| Capability | Admin | Sales Employee |
+|---|---|---|
+| Access dashboard | Yes | Yes |
+| Manage leads | Yes | Within assigned permissions |
+| Assign or reassign leads | Yes | No |
+| Manage follow-ups | Yes | Within assigned permissions |
+| Manage bookings | Yes | Within assigned permissions |
+| View projects and buildings | Yes | Yes |
+| Manage employees | Yes | No |
 
-## Getting Started
+Customers are represented as CRM lead records rather than public user accounts. EstateFlow is an internal CRM, not a public property marketplace or customer portal.
+
+## Deployment
+
+The application uses a cloud-based deployment architecture:
+
+| Service | Purpose |
+|---|---|
+| Vercel | Next.js frontend hosting |
+| Render | Express.js backend hosting |
+| Neon | PostgreSQL database hosting |
+| Cloudinary | Image storage and delivery |
+
+The frontend communicates with the deployed backend through its configured API URL. The backend connects to Neon using the configured database connection string and uses Cloudinary for image operations.
+
+## Local Development
+
+### Prerequisites
+- Node.js
+- npm
+- PostgreSQL or a configured Neon database
 
 ### 1. Clone the repository
 
 ```bash
-git clone YOUR_GITHUB_REPOSITORY_URL
+git clone <YOUR_REPOSITORY_URL>
 cd EstateFlow
 ```
 
-### 2. Set up the backend
+### 2. Install dependencies
+
+Install dependencies in the frontend and backend directories according to the repository structure.
 
 ```bash
 cd backend
 npm install
 ```
 
-Create a `.env` file inside `backend/` and configure the environment variables required by the backend.
+Install the frontend dependencies in the directory containing the Next.js application.
 
-Example:
+### 3. Configure environment variables
+
+Example backend configuration:
 
 ```env
-NODE_ENV=development
-DATABASE_URL="YOUR_POSTGRESQL_CONNECTION_STRING"
-JWT_SECRET="YOUR_SECRET_KEY"
+PORT=5000
+DATABASE_URL="your-postgresql-connection-string"
+JWT_SECRET="your-secure-secret"
 FRONTEND_URL="http://localhost:3000"
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="your-api-key"
+CLOUDINARY_API_SECRET="your-api-secret"
 ```
 
-Add any additional variables required by your application, such as Cloudinary credentials.
+Example frontend configuration:
 
-### 3. Generate the Prisma client
+```env
+NEXT_PUBLIC_API_URL="http://localhost:5000"
+```
+
+Use the exact environment variable names expected by the codebase. Store credentials securely and never commit secrets to Git.
+
+### 4. Generate the Prisma client and migrate
+
+Run the Prisma commands supported by the project's configuration:
 
 ```bash
 npx prisma generate
-```
-
-### 4. Apply database migrations
-
-```bash
 npx prisma migrate dev
 ```
 
-Run this command only when the required migration files are available. For an existing production database, use `npx prisma migrate deploy` instead.
+### 5. Run the applications
 
-### 5. Start the backend
+Use the development scripts defined in the respective `package.json` files to start the frontend and backend.
 
-```bash
-npm run dev
-```
+## Security Considerations
 
-The API runs on the port configured by your backend application.
+- Protect private API endpoints with authentication.
+- Enforce role permissions on the backend.
+- Configure Helmet and CORS for the deployment environment.
+- Validate incoming requests.
+- Use rate limiting where appropriate.
+- Store secrets in environment variables.
+- Restrict access to database credentials and Cloudinary secrets.
 
-### 6. Set up the frontend
+## Future Improvements
 
-Open a second terminal from the project root:
-
-```bash
-cd frontend
-npm install
-```
-
-Create `frontend/.env.local`:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:YOUR_BACKEND_PORT
-```
-
-Replace `YOUR_BACKEND_PORT` with the actual backend port. If the frontend appends `/api` to this URL, keep the base URL without `/api`.
-
-Start the frontend:
-
-```bash
-npm run dev
-```
-
-Open `http://localhost:3000` in your browser.
-
-## Available Scripts
-
-### Frontend
-
-| Command            | Description                      |
-| ------------------ | -------------------------------- |
-| `npm run dev`      | Start the development server     |
-| `npm run build`    | Build the production application |
-| `npm run start`    | Start the production server      |
-| `npm run lint`     | Run ESLint, if configured        |
-| `npx tsc --noEmit` | Check TypeScript types           |
-
-### Backend
-
-| Command                     | Description                                   |
-| --------------------------- | --------------------------------------------- |
-| `npm run dev`               | Start the development server                  |
-| `npm run build`             | Generate Prisma client and compile TypeScript |
-| `npm start`                 | Start the compiled server                     |
-| `npm run typecheck`         | Check TypeScript types                        |
-| `npx prisma generate`       | Generate Prisma client                        |
-| `npx prisma migrate deploy` | Apply pending production migrations           |
-
-A seed command can be configured in the backend `package.json` to populate the database with demo data.
-
-## API Documentation
-
-The backend uses Swagger / OpenAPI for API documentation. Once the backend is running, open the Swagger endpoint configured in the backend application.
-
-## Deployment
-
-### Frontend — Vercel
-
-1. Import the GitHub repository into Vercel.
-2. Set the root directory to `frontend`.
-3. Keep the default Next.js build settings.
-4. Configure `NEXT_PUBLIC_API_URL` with the deployed backend URL.
-5. Deploy the application.
-
-### Backend — Render
-
-1. Create a Web Service connected to the same GitHub repository.
-2. Set the root directory to `backend`.
-3. Configure the build command:
-
-   ```bash
-   npm install && npm run build
-   ```
-
-4. Configure the start command:
-
-   ```bash
-   npm start
-   ```
-
-5. Add the required production environment variables, including the Neon `DATABASE_URL` and a secure `JWT_SECRET`.
-6. Apply database migrations using `npx prisma migrate deploy`.
-7. Run the seed script separately if demonstration data is needed.
-
-### Database — Neon
-
-Create a PostgreSQL database in Neon and configure its connection string as `DATABASE_URL` in the Render environment settings. Keep database credentials private.
-
-## Security
-
-- Never commit `.env` files, API keys, database credentials, or JWT secrets.
-- Use a strong, unique JWT secret in production.
-- Configure CORS to allow only the required frontend origins.
-- Change default demonstration credentials before exposing the application publicly.
+Potential enhancements include automated testing, audit logging, structured application logs, CI/CD checks, and expanded API documentation.
 
 ## License
 
-This project is currently provided for development and demonstration purposes. Add a license if you intend to distribute it publicly.
+Private project. All rights reserved unless a separate license is provided.
