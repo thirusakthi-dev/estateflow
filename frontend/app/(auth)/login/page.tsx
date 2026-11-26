@@ -1,10 +1,18 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import { useReducedMotion } from "motion/react";
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -14,7 +22,10 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { AppLogo } from "@/components/ui/brand/app-logo";
 import { useToast } from "@/components/ui/toast";
 import { useLogin } from "@/features/auth/auth.queries";
-import { loginSchema, type LoginFormValues } from "@/features/auth/auth.schema";
+import {
+  loginSchema,
+  type LoginFormValues,
+} from "@/features/auth/auth.schema";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,6 +40,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -97,6 +109,17 @@ export default function LoginPage() {
     }
   }
 
+  async function handleAdminLogin() {
+    setValue("email", "admin@estateflow.local", {
+      shouldValidate: true,
+    });
+    setValue("password", "Admin@123456", {
+      shouldValidate: true,
+    });
+
+    await handleSubmit(onSubmit)();
+  }
+
   const isLoading = isSubmitting || loginMutation.isPending;
 
   return (
@@ -115,7 +138,9 @@ export default function LoginPage() {
             />
           </div>
 
-          <h1 className="text-2xl font-semibold tracking-tight">EstateFlow</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            EstateFlow
+          </h1>
 
           <p className="mt-2 text-sm text-muted-foreground">
             Real estate management, simplified.
@@ -160,7 +185,10 @@ export default function LoginPage() {
                 className="block text-sm font-medium text-foreground"
               >
                 Password
-                <span className="ml-1 text-destructive" aria-hidden="true">
+                <span
+                  className="ml-1 text-destructive"
+                  aria-hidden="true"
+                >
                   *
                 </span>
               </label>
@@ -184,7 +212,9 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword((visible) => !visible)}
                   disabled={isLoading}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={
+                    showPassword ? "Hide password" : "Show password"
+                  }
                   aria-pressed={showPassword}
                   className="absolute right-3 top-[22px] z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -195,16 +225,6 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
-
-              {/* <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => router.push("/forgot-password")}
-                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                  Forgot password?
-                </button>
-              </div> */}
             </div>
 
             <Button
@@ -213,9 +233,33 @@ export default function LoginPage() {
               size="lg"
               loading={isLoading}
               loadingText="Signing in..."
+              disabled={isLoading}
               rightIcon={ArrowRight}
             >
               Sign in
+            </Button>
+
+            {/* Separator */}
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">
+                OR
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            {/* Admin Login */}
+            <Button
+              type="button"
+              block
+              variant="outline"
+              size="lg"
+              leftIcon={ShieldCheck}
+              loading={isLoading}
+              disabled={isLoading}
+              onClick={handleAdminLogin}
+            >
+              Continue as Admin
             </Button>
           </form>
         </div>
